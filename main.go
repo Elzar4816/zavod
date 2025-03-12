@@ -69,18 +69,24 @@ func main() {
 	// Страница позиций
 	r.GET("/position", func(c *gin.Context) { handlers.ListPositions(c, gormDB) })
 
-	// Страница сотрудников
-	r.GET("/employee", func(c *gin.Context) { handlers.ListEmployees(c, gormDB) })
-
 	// Маршруты для позиций (Position)
 	r.POST("/position/create", func(c *gin.Context) { handlers.CreatePosition(c, gormDB) })
 	r.DELETE("/position/delete/:id", func(c *gin.Context) { handlers.DeletePosition(c, gormDB) })
 	r.PUT("/position/update/:id", func(c *gin.Context) { handlers.UpdatePosition(c, gormDB) })
 
+	// Страница сотрудников
+	r.GET("/employee", func(c *gin.Context) { handlers.ListEmployees(c, gormDB) })
 	// Маршруты для сотрудников (Employee)
 	r.POST("/employee/create", func(c *gin.Context) { handlers.CreateEmployee(c, gormDB) })
-	r.POST("/employee/delete", func(c *gin.Context) { handlers.DeleteEmployee(c, gormDB) }) // Удаление через POST
-	r.POST("/employee/update", func(c *gin.Context) { handlers.UpdateEmployee(c, gormDB) }) // Обновление через POST
+	r.POST("/employee/delete", func(c *gin.Context) { handlers.DeleteEmployee(c, gormDB) })
+	r.POST("/employee/update", func(c *gin.Context) { handlers.UpdateEmployee(c, gormDB) })
+
+	// Страница закупки сырья
+	r.GET("/raw_material_purchases", func(c *gin.Context) { handlers.ListRawMaterialPurchases(c, gormDB) })
+	// Маршруты для закупки сырья (material purchases)
+	r.POST("/purchases/create", func(c *gin.Context) { handlers.CreateRawMaterialPurchase(c, gormDB) })
+	r.DELETE("/purchases/delete/:id", func(c *gin.Context) { handlers.DeleteRawMaterialPurchase(c, gormDB) })
+	r.PUT("/purchases/update", func(c *gin.Context) { handlers.UpdateRawMaterial(c, gormDB) })
 
 	// Запускаем сервер
 	log.Println("Server started on http://localhost:8080")

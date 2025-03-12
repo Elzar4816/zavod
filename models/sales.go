@@ -13,6 +13,10 @@ type RawMaterialPurchase struct {
 	Employee      Employee    `json:"employee" gorm:"foreignKey:EmployeeID;constraint:OnDelete:CASCADE"`
 }
 
+func (RawMaterialPurchase) TableName() string {
+	return "raw_material_purchases"
+}
+
 type ProductSale struct {
 	ID          uint         `json:"id" gorm:"primaryKey"`
 	ProductID   uint         `json:"product_id" gorm:"index;not null"`
@@ -24,6 +28,10 @@ type ProductSale struct {
 	Employee    Employee     `json:"employee" gorm:"foreignKey:EmployeeID;constraint:OnDelete:CASCADE"`
 }
 
+func (ProductSale) TableName() string {
+	return "product_sales"
+}
+
 type ProductProduction struct {
 	ID             uint         `json:"id" gorm:"primaryKey"`
 	ProductID      uint         `json:"product_id" gorm:"index;not null"`
@@ -32,14 +40,6 @@ type ProductProduction struct {
 	ProductionDate time.Time    `json:"production_date" gorm:"not null"`
 	EmployeeID     uint         `json:"employee_id" gorm:"index;not null"`
 	Employee       Employee     `json:"employee" gorm:"foreignKey:EmployeeID;constraint:OnDelete:CASCADE"`
-}
-
-func (RawMaterialPurchase) TableName() string {
-	return "raw_material_purchases"
-}
-
-func (ProductSale) TableName() string {
-	return "product_sales"
 }
 
 func (ProductProduction) TableName() string {

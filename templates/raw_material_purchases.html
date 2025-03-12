@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Закупки сырья</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        /* Стили для формы */
+        .form-container {
+            border: 2px solid #007bff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            background-color: #f8f9fa;
+            max-width: 400px;
+        }
+
+        .form-container h2 {
+            margin-top: 0;
+            text-align: center;
+            color: #007bff;
+        }
+
+        .form-container label {
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+        }
+
+        .form-container input {
+            width: 350px;
+            padding: 10px;
+            font-size: 16px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .form-container button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .form-container button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Модальные окна */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 300px;
+            text-align: center;
+        }
+
+        .modal button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .modal button:hover {
+            background-color: #c9302c;
+        }
+
+        .modal button.cancel {
+            background-color: #5bc0de;
+        }
+
+        .modal button.cancel:hover {
+            background-color: #31b0d5;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Закупки сырья</h1>
+
+<div class="form-container">
+    <h2>Создание закупки</h2>
+    <label for="raw_material_id">Сырье:</label>
+    <select id="raw_material_id" required>
+        {{ range .rawMaterials }}
+        <option value="{{ .ID }}">{{ .Name }}</option>
+        {{ end }}
+    </select>
+
+    <label for="quantity">Количество:</label>
+    <input type="number" step="any" id="quantity" placeholder="Количество" required>
+
+    <label for="total_amount">Общая сумма:</label>
+    <input type="number" step="any" id="total_amount" placeholder="Общая сумма" required>
+
+    <label for="employee_id">Сотрудник:</label>
+    <select id="employee_id" required>
+        {{ range .employees }}
+        <option value="{{ .ID }}">{{ .FullName }}</option>
+        {{ end }}
+    </select>
+
+    <button onclick="createPurchase()">Добавить</button>
+</div>
+
+<table>
+    <tr>
+        <th>Сырье</th><th>Количество</th><th>Общая сумма</th><th>Сотрудник</th><th>Дата</th><th>Действия</th>
+    </tr>
+    {{ range .purchases }}
+    <tr>
+        <td>{{ .RawMaterial.Name }}</td>
+        <td>{{ .Quantity }}</td>
+        <td>{{ .TotalAmount }}</td>
+        <td>{{ .Employee.FullName }}</td>
+        <td>{{ .PurchaseDate }}</td>
+        <td>
+            <button class="delete" onclick="openDeleteModal('{{ .ID }}')">Удалить</button>
+        </td>
+    </tr>
+    {{ end }}
+</table>
+
+<a href="/">На главную</a>
+
+<!-- Модальное окно подтверждения удаления -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <h2>Удалить закупку?</h2>
+        <button onclick="deletePurchase()">Удалить</button>
+        <button class="cancel" onclick="closeModal('deleteModal')">Отмена</button>
+    </div>
+</div>
+
+<script>
+    function createPurchase() {
+        const rawMaterialId = document.getElementById('raw_material_id').value;
+        const quantity = parseFloat(document.getElementById('quantity').value);
+        const totalAmount = parseFloat(document.getElementById('total_amount').value);
+        const employeeId = document.getElementById('employee_id').value;
+
+        if (isNaN(quantity) || isNaN(totalAmount)) {
+            alert('Количество и сумма должны быть числами');
+            return;
+        }
+
+        fetch('/purchases/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                raw_material_id: Number(rawMaterialId),
+                quantity,
+                total_amount: totalAmount,
+                employee_id: Number(employeeId)
+            }),
+        })
+            .then(response => response.json())  // Используем .json() для обработки JSON ответа
+            .then(data => {
+                if (data.id) {
+                    alert('Закупка добавлена!');
+                    window.location.reload();
+                } else {
+                    // Показываем сообщение об ошибке от сервера
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error("Ошибка при запросе:", error);
+                alert('Ошибка при разборе ответа сервера');
+            });
+    }
+
+
+    let currentDeleteId = null;
+
+    function openDeleteModal(id) {
+        currentDeleteId = id;
+        document.getElementById('deleteModal').style.display = 'flex';
+    }
+
+    function deletePurchase() {
+        fetch(`/purchases/delete/${currentDeleteId}`, { method: 'DELETE' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'Закупка удалена') {
+                    alert('Закупка удалена!');
+                    window.location.reload();
+                } else {
+                    alert('Ошибка при удалении');
+                }
+            })
+            .catch(error => {
+                alert('Ошибка: ' + error);
+            });
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
