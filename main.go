@@ -1,6 +1,7 @@
 package main
 
 import (
+	"gorm.io/gorm"
 	"log"
 	"zavod/db"
 	"zavod/handlers"
@@ -14,13 +15,30 @@ func main() {
 
 	// Инициализация Gin
 	r := gin.Default()
+
+	// Настройка статики и шаблонов
+	setupRoutesStaticAndTemplates(r)
+
+	// Регистрация маршрутов
+	setupRoutes(r, gormDB)
+
+	// Запускаем сервер
+	log.Println("Server started on http://localhost:8080")
+	r.Run(":8080")
+}
+
+// setupRoutesStaticAndTemplates - функция для настройки статики и HTML-шаблонов
+func setupRoutesStaticAndTemplates(r *gin.Engine) {
+	// Настройка статики
 	r.Static("/css", "./css")
 	r.Static("/images", "./images")
-	gin.SetMode(gin.DebugMode)
 
 	// Подключаем HTML-шаблоны
 	r.LoadHTMLGlob("templates/*")
+}
 
+// setupRoutes - функция для регистрации всех маршрутов и хендлеров
+func setupRoutes(r *gin.Engine, gormDB *gorm.DB) {
 	// Главная страница (выбор таблицы)
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(200, "index.html", nil)
@@ -87,8 +105,4 @@ func main() {
 	r.POST("/purchases/create", func(c *gin.Context) { handlers.CreateRawMaterialPurchase(c, gormDB) })
 	r.DELETE("/purchases/delete/:id", func(c *gin.Context) { handlers.DeleteRawMaterialPurchase(c, gormDB) })
 	r.PUT("/purchases/update", func(c *gin.Context) { handlers.UpdateRawMaterial(c, gormDB) })
-
-	// Запускаем сервер
-	log.Println("Server started on http://localhost:8080")
-	r.Run(":8080")
 }
