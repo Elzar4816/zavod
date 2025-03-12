@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Единицы измерения</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .form-container {
+      border: 2px solid #007bff;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      background-color: #f8f9fa;
+      max-width: 400px;
+    }
+
+    .form-container h2 {
+      margin-top: 0;
+      text-align: center;
+      color: #007bff;
+    }
+
+    .form-container label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
+
+    .form-container input {
+      width: 350px;
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .form-container button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 15px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .form-container button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Единицы измерения</h1>
+
+<div class="form-container">
+  <h2>Создание записи</h2>
+  <label for="name">Название:</label>
+  <input type="text" id="name" placeholder="Единица измерения" required>
+  <button onclick="createUnit()">Добавить</button>
+</div>
+
+<table>
+  <tr>
+    <th>Название</th><th>Действия</th>
+  </tr>
+  {{ range .units }}
+  <tr>
+    <td>{{ .Name }}</td>
+    <td>
+      <button onclick="openEditModal('{{ .ID }}', '{{ .Name }}')">Редактировать</button>
+      <button class="delete" onclick="openDeleteModal('{{ .ID }}')">Удалить</button>
+    </td>
+  </tr>
+  {{ end }}
+</table>
+
+<!-- Модальное окно для редактирования -->
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <h2>Редактировать единицу измерения</h2>
+    <label for="editName">Название:</label>
+    <input type="text" id="editName" required>
+    <button onclick="updateUnit()">Сохранить</button>
+    <button onclick="closeModal('editModal')">Отмена</button>
+  </div>
+</div>
+
+<!-- Модальное окно для удаления -->
+<div id="deleteModal" class="modal">
+  <div class="modal-content">
+    <h2>Удалить запись?</h2>
+    <button onclick="deleteUnit()">Удалить</button>
+    <button onclick="closeModal('deleteModal')">Отмена</button>
+  </div>
+</div>
+
+<a href="/">На главную</a>
+
+<script>
+  function openEditModal(id, name) {
+    document.getElementById('editName').value = name;
+    window.selectedUnitId = id; // Сохраняем ID для редактирования
+    document.getElementById('editModal').style.display = 'flex';
+  }
+
+  function openDeleteModal(id) {
+    window.selectedUnitId = id; // Сохраняем ID для удаления
+    document.getElementById('deleteModal').style.display = 'flex';
+  }
+
+  function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+  }
+
+  async function createUnit() {
+    const name = document.getElementById("name").value;
+    if (!name) {
+      alert("Название не может быть пустым");
+      return;
+    }
+
+    try {
+      const response = await fetch("/unit/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        alert(result.error || "Ошибка при добавлении единицы измерения");
+      }
+    } catch (error) {
+      console.error("Ошибка сети или выполнения запроса:", error);
+      alert("Ошибка сети: " + error.message);
+    }
+  }
+
+  async function updateUnit() {
+    const name = document.getElementById("editName").value;
+    if (!name) {
+      alert("Название не может быть пустым");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/unit/update/${window.selectedUnitId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        alert(result.error || "Ошибка при обновлении единицы измерения");
+      }
+    } catch (error) {
+      console.error("Ошибка сети или выполнения запроса:", error);
+      alert("Ошибка сети: " + error.message);
+    }
+  }
+
+  async function deleteUnit() {
+    try {
+      const response = await fetch(`/unit/delete/${window.selectedUnitId}`, {
+        method: "DELETE"
+      });
+
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        const result = await response.json();
+        alert(result.error || "Ошибка при удалении единицы измерения");
+      }
+    } catch (error) {
+      console.error("Ошибка сети или выполнения запроса:", error);
+      alert("Ошибка сети: " + error.message);
+    }
+  }
+</script>
+
+</body>
+</html>

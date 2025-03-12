@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Бюджет</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .form-container {
+      border: 2px solid #007bff;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      background-color: #f8f9fa;
+      max-width: 400px;
+    }
+
+    .form-container h2 {
+      margin-top: 0;
+      text-align: center;
+      color: #007bff;
+    }
+
+    .form-container label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
+
+    .form-container input {
+      width: 350px;
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .form-container button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 15px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .form-container button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Управление бюджетом</h1>
+
+<!-- Форма для добавления бюджета -->
+<div class="form-container">
+  <h2>Создание или обновление бюджета</h2>
+  <label for="total_amount">Сумма бюджета:</label>
+  <input type="number" id="total_amount" placeholder="Введите сумму бюджета" required>
+
+  <button onclick="createBudget()">Сохранить</button>
+</div>
+
+<!-- Таблица бюджетов -->
+<div class="budget-container">
+  <h2>Список бюджетов</h2>
+  <table>
+    <tr>
+      <th>Сумма бюджета</th>
+      <th>Действия</th>
+    </tr>
+    {{ range .budgets }}
+    <tr>
+      <td>{{ printf "%.2f" .TotalAmount }}</td>
+      <td>
+        <button onclick="openEditModal('{{ .ID }}', '{{ .TotalAmount }}')">Редактировать</button>
+        <button onclick="openDeleteModal('{{ .ID }}')">Удалить</button>
+      </td>
+    </tr>
+    {{ end }}
+  </table>
+</div>
+
+<!-- Модальные окна для редактирования и удаления -->
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <h2>Редактировать бюджет</h2>
+    <input type="hidden" id="editId">
+
+    <label for="editTotalAmount">Сумма бюджета:</label>
+    <input type="number" id="editTotalAmount" step="any" required>
+
+    <button onclick="updateBudget()">Сохранить</button>
+    <button type="button" onclick="closeModal('editModal')">Отмена</button>
+  </div>
+</div>
+
+<div id="deleteModal" class="modal">
+  <div class="modal-content">
+    <h2>Удалить бюджет?</h2>
+    <button onclick="deleteBudget()">Удалить</button>
+    <button type="button" onclick="closeModal('deleteModal')">Отмена</button>
+  </div>
+</div>
+
+<a href="/">На главную</a>
+
+<script>
+  // Функция для создания или обновления бюджета
+  function createBudget() {
+    const totalAmount = parseFloat(document.getElementById('total_amount').value);
+
+    if (isNaN(totalAmount)) {
+      alert('Сумма бюджета должна быть числом');
+      return;
+    }
+
+    fetch('/budget/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ total_amount: totalAmount })
+    })
+            .then(response => response.json())
+            .then(data => {
+              if (data.id) {
+                window.location.reload(); // Перезагружаем страницу после успешного добавления
+              } else {
+                alert(data.error);
+              }
+            });
+  }
+
+  // Функция для редактирования бюджета
+  function openEditModal(id, totalAmount) {
+    document.getElementById('editId').value = id;
+    document.getElementById('editTotalAmount').value = totalAmount;
+    document.getElementById('editModal').style.display = 'flex';
+  }
+
+  // Функция для обновления бюджета
+  function updateBudget() {
+    const id = document.getElementById('editId').value;
+    const totalAmount = parseFloat(document.getElementById('editTotalAmount').value);
+
+    if (isNaN(totalAmount)) {
+      alert('Сумма бюджета должна быть числом');
+      return;
+    }
+
+    fetch(`/budget/update/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ total_amount: totalAmount })
+    })
+            .then(response => response.json())
+            .then(data => {
+              if (data.id) {
+                window.location.reload(); // Перезагружаем страницу после успешного обновления
+              } else {
+                alert('Ошибка при обновлении бюджета');
+              }
+            });
+  }
+
+  // Функция для удаления бюджета
+  function openDeleteModal(id) {
+    document.getElementById('deleteModal').style.display = 'flex';
+    window.currentDeleteId = id;
+  }
+
+  // Функция для подтверждения удаления бюджета
+  function deleteBudget() {
+    const id = window.currentDeleteId;
+
+    fetch(`/budget/delete/${id}`, {
+      method: 'DELETE',
+    })
+            .then(response => response.json())
+            .then(data => {
+              if (data.message === 'Бюджет удален') {
+                window.location.reload(); // Перезагружаем страницу после удаления
+              } else {
+                alert('Ошибка при удалении бюджета');
+              }
+            });
+  }
+
+  // Функция для закрытия модального окна
+  function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+  }
+</script>
+
+</body>
+</html>

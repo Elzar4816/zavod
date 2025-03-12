@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Готовая продукция</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    .form-container {
+      border: 2px solid #007bff;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      background-color: #f8f9fa;
+      max-width: 400px;
+    }
+
+    .form-container h2 {
+      margin-top: 0;
+      text-align: center;
+      color: #007bff;
+    }
+
+    .form-container label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
+
+    .form-container select,
+    .form-container input {
+      width: 350px;
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .form-container button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 15px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .form-container button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Готовая продукция</h1>
+
+<div class="form-container">
+  <h2>Создание записи</h2>
+  <label for="name">Название продукции:</label>
+  <input type="text" id="name" placeholder="Название продукции" required>
+
+  <label for="quantity">Количество:</label>
+  <input type="number" step="any" id="quantity" placeholder="Количество" required>
+
+  <label for="total_amount">Общая сумма:</label>
+  <input type="number" step="any" id="total_amount" placeholder="Общая сумма" required>
+
+  <label for="unit_id">Единица измерения:</label>
+  <select id="unit_id" required>
+    {{ range .units }}
+    <option value="{{ .ID }}">{{ .Name }}</option>
+    {{ end }}
+  </select>
+
+  <button onclick="createFinishedGood()">Добавить</button>
+</div>
+
+<table>
+  <tr>
+    <th>Название</th><th>Количество</th><th>Единица</th><th>Общая сумма</th><th>Действия</th>
+  </tr>
+  {{ range .finishedGoods }}
+  <tr>
+    <td>{{ .Name }}</td>
+    <td>{{ .Quantity }}</td>
+    <td>{{ .Unit.Name }}</td>
+    <td>{{ .TotalAmount }}</td>
+    <td>
+      <button onclick="openEditModal('{{ .ID }}', '{{ .Name }}', '{{ .Quantity }}', '{{ .UnitID }}', '{{ .TotalAmount }}')">Редактировать</button>
+      <button class="delete" onclick="openDeleteModal('{{ .ID }}')">Удалить</button>
+    </td>
+  </tr>
+  {{ end }}
+</table>
+
+<!-- Модальное окно для редактирования -->
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <h2>Редактировать продукцию</h2>
+    <label for="editName">Название продукции:</label>
+    <input type="text" id="editName" required>
+
+    <label for="editQuantity">Количество:</label>
+    <input type="number" id="editQuantity" required>
+
+    <label for="editTotalAmount">Общая сумма:</label>
+    <input type="number" step="any" id="editTotalAmount" required>
+
+    <label for="editUnitId">Единица измерения:</label>
+    <select id="editUnitId">
+      {{ range .units }}
+      <option value="{{ .ID }}">{{ .Name }}</option>
+      {{ end }}
+    </select>
+
+    <button onclick="updateFinishedGood()">Сохранить</button>
+    <button type="button" onclick="closeModal('editModal')">Отмена</button>
+  </div>
+</div>
+
+<!-- Модальное окно для удаления -->
+<div id="deleteModal" class="modal">
+  <div class="modal-content">
+    <h2>Удалить запись?</h2>
+    <button onclick="deleteFinishedGood()">Удалить</button>
+    <button type="button" onclick="closeModal('deleteModal')">Отмена</button>
+  </div>
+</div>
+
+<a href="/">На главную</a>
+
+<script>
+  function createFinishedGood() {
+    const name = document.getElementById('name').value;
+    const quantity = parseFloat(document.getElementById('quantity').value);
+    const totalAmount = parseFloat(document.getElementById('total_amount').value);
+    const unitId = document.getElementById('unit_id').value;
+
+    if (isNaN(quantity) || isNaN(totalAmount)) {
+      alert('Количество и общая сумма должны быть числами');
+      return;
+    }
+
+    fetch('/finished-good/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name,
+        quantity,
+        total_amount: totalAmount,
+        unit_id: Number(unitId),
+      }),
+    })
+            .then(response => response.json())
+            .then(data => {
+              if (data.id) {
+                window.location.reload(); // Обновляем страницу
+              } else {
+                alert('Ошибка при добавлении продукции');
+              }
+            });
+  }
+
+  function openEditModal(id, name, quantity, unitId, totalAmount) {
+    document.getElementById('editName').value = name;
+    document.getElementById('editQuantity').value = quantity;
+    document.getElementById('editTotalAmount').value = totalAmount;
+    document.getElementById('editUnitId').value = unitId;
+    window.currentEditId = id; // Сохраняем ID для обновления
+    document.getElementById('editModal').style.display = 'flex';
+  }
+
+  function updateFinishedGood() {
+    const name = document.getElementById('editName').value;
+    const quantity = parseFloat(document.getElementById('editQuantity').value);
+    const totalAmount = parseFloat(document.getElementById('editTotalAmount').value);
+    const unitId = document.getElementById('editUnitId').value;
+    const id = window.currentEditId;
+
+    if (isNaN(quantity) || isNaN(totalAmount)) {
+      alert('Количество и общая сумма должны быть числами');
+      return;
+    }
+
+    fetch(`/finished-good/update/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name,
+        quantity,
+        total_amount: totalAmount,
+        unit_id: Number(unitId),
+      }),
+    })
+            .then(response => response.json())
+            .then(data => {
+              if (data.id) {
+                window.location.reload(); // Обновляем страницу
+              } else {
+                alert('Ошибка при обновлении продукции');
+              }
+            });
+  }
+
+  function openDeleteModal(id) {
+    window.currentDeleteId = id;
+    document.getElementById('deleteModal').style.display = 'flex';
+  }
+
+  function deleteFinishedGood() {
+    const id = window.currentDeleteId;
+
+    fetch(`/finished-good/delete/${id}`, {
+      method: 'DELETE',
+    })
+            .then(response => response.json())
+            .then(data => {
+              if (data.message === 'Готовая продукция удалена') {
+                window.location.reload(); // Обновляем страницу
+              } else {
+                alert('Ошибка при удалении продукции');
+              }
+            })
+            .catch(error => {
+              alert('Ошибка при удалении продукции: ' + error);
+            });
+  }
+
+  function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+  }
+</script>
+
+</body>
+</html>
