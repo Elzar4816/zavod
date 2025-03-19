@@ -32,6 +32,8 @@ func setupRoutesStaticAndTemplates(r *gin.Engine) {
 	// Настройка статики
 	r.Static("/css", "./css")
 	r.Static("/images", "./images")
+	// Настройка статики для JS
+	r.Static("/js", "./js")
 
 	// Подключаем HTML-шаблоны
 	r.LoadHTMLGlob("templates/*")

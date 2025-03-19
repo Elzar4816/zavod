@@ -12,6 +12,9 @@ import (
 	"zavod/models"
 )
 
+/*
+НАДО СРАЗУ РЕДИРЕКТ НА СЫРЬЕ СДЕЛАТЬ ПОСЛЕ ЗАКУПКИ
+*/
 // ListRawMaterialPurchases - список закупок сырья
 func ListRawMaterialPurchases(c *gin.Context, db *gorm.DB) {
 	var purchases []models.RawMaterialPurchase
