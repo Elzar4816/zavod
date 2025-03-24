@@ -7,12 +7,15 @@ import (
 	"zavod/models"
 )
 
+const log = "Некорректные данные"
+const log2 = "Сотрудник не найден"
+
 // CreateEmployee - создание сотрудника
 func CreateEmployee(c *gin.Context, db *gorm.DB) {
 	var employee models.Employee
 	// Считываем данные из формы
 	if err := c.ShouldBindJSON(&employee); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректные данные"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": log})
 		return
 	}
 
@@ -44,7 +47,7 @@ func GetEmployee(c *gin.Context, db *gorm.DB) {
 	id := c.Param("id")
 	var employee models.Employee
 	if err := db.Preload("Position").First(&employee, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Сотрудник не найден"})
+		c.JSON(http.StatusNotFound, gin.H{"error": log2})
 		return
 	}
 
@@ -56,13 +59,13 @@ func UpdateEmployee(c *gin.Context, db *gorm.DB) {
 	id := c.Param("id")
 	var employee models.Employee
 	if err := db.First(&employee, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Сотрудник не найден"})
+		c.JSON(http.StatusNotFound, gin.H{"error": log2})
 		return
 	}
 
 	// Считываем новые данные из формы
 	if err := c.ShouldBindJSON(&employee); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректные данные"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": log})
 		return
 	}
 
@@ -91,7 +94,7 @@ func CreatePosition(c *gin.Context, db *gorm.DB) {
 	var position models.Position
 	// Считываем данные из формы
 	if err := c.ShouldBind(&position); err != nil {
-		c.HTML(http.StatusBadRequest, "position.html", gin.H{"error": "Некорректные данные"})
+		c.HTML(http.StatusBadRequest, "position.html", gin.H{"error": log})
 		return
 	}
 
@@ -130,7 +133,7 @@ func UpdatePosition(c *gin.Context, db *gorm.DB) {
 
 	// Считываем новые данные из формы
 	if err := c.ShouldBind(&position); err != nil {
-		c.HTML(http.StatusBadRequest, "position.html", gin.H{"error": "Некорректные данные"})
+		c.HTML(http.StatusBadRequest, "position.html", gin.H{"error": log})
 		return
 	}
 
