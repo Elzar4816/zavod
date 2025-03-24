@@ -53,7 +53,7 @@ jobs:
       - name: Запуск Sonar Scanner
         uses: sonarsource/sonarqube-scan-action@v2
         env:
-          SONAR_HOST_URL: "https://f4ba-158-181-179-173.ngrok-free.app"
+          SONAR_HOST_URL: "${{ secrets.SONAR_HOST_URL }}"
           SONAR_TOKEN: "${{ secrets.SONAR_TOKEN }}"
         with:
           projectBaseDir: "."
