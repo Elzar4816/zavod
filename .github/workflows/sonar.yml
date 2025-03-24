@@ -4,36 +4,56 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   sonar:
     runs-on: ubuntu-latest
     services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: sonar
+          POSTGRES_PASSWORD: sonar
+          POSTGRES_DB: sonarqube
+        ports:
+          - 5432:5432
+
       sonarqube:
-        image: sonarqube:lts
+        image: sonarqube
         ports:
           - 9000:9000
+        env:
+          SONAR_JDBC_URL: jdbc:postgresql://postgres/sonarqube
+          SONAR_JDBC_USERNAME: sonar
+          SONAR_JDBC_PASSWORD: sonar
         options: >-
-          --health-cmd "curl -f http://localhost:9000 || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --shm-size=512m
+          -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+          -e SONAR_WEB_JVM_OPTS="-Xmx512m -Xms512m"
+
     steps:
       - name: Checkout репозиторий
         uses: actions/checkout@v4
 
       - name: Ждем запуск SonarQube
-        run: sleep 30  # Даем время на запуск сервера
-
-      - name: Настройка Sonar Scanner
         run: |
-          export SONARQUBE_URL="http://localhost:9000"
-          export SONARQUBE_TOKEN="${{ secrets.SONAR_TOKEN }}"
+          echo "Ожидание запуска SonarQube..."
+          for i in {1..10}; do
+            if curl -s https://f4ba-158-181-179-173.ngrok-free.app >/dev/null; then
+              echo "SonarQube запущен!"
+              exit 0
+            fi
+            echo "Ожидание..."
+            sleep 10
+          done
+          echo "Ошибка: SonarQube не запустился"
+          exit 1
 
       - name: Запуск Sonar Scanner
-        run: |
-          sonar-scanner \
-            -Dsonar.projectKey=my-project \
-            -Dsonar.sources=. \
-            -Dsonar.host.url=$SONARQUBE_URL \
-            -Dsonar.login=$SONARQUBE_TOKEN
+        uses: sonarsource/sonarqube-scan-action@v4
+        env:
+          SONAR_HOST_URL: "${{ secrets.SONAR_HOST_URL }}"
+          SONAR_TOKEN: "${{ secrets.SONAR_TOKEN }}"
+        with:
+          projectBaseDir: "."
