@@ -25,7 +25,7 @@ function App() {
                 <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
                 <div
                     style={{
-                        marginLeft: sidebarOpen ? "300px" : "50px", // Если сайдбар открыт, отодвигаем контент
+                        marginLeft: sidebarOpen ? "300px" : "20vh", // Если сайдбар открыт, отодвигаем контент
                         padding: "20px",
                         transition: "margin-left 0.3s ease",
                         flex: 1,
