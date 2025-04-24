@@ -7,15 +7,25 @@ import (
 	"zavod/models"
 )
 
-const log = "Некорректные данные"
+const log1 = "Некорректные данные"
 const log2 = "Сотрудник не найден"
+
+// Хендлер для получения всех сотрудников
+func GetEmployees(c *gin.Context, db *gorm.DB) {
+	var employees []models.Employee
+	if err := db.Preload("Position").Find(&employees).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось загрузить сотрудников"})
+		return
+	}
+	c.JSON(http.StatusOK, employees)
+}
 
 // CreateEmployee - создание сотрудника
 func CreateEmployee(c *gin.Context, db *gorm.DB) {
 	var employee models.Employee
 	// Считываем данные из формы
 	if err := c.ShouldBindJSON(&employee); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": log})
+		c.JSON(http.StatusBadRequest, gin.H{"error": log1})
 		return
 	}
 
@@ -65,7 +75,7 @@ func UpdateEmployee(c *gin.Context, db *gorm.DB) {
 
 	// Считываем новые данные из формы
 	if err := c.ShouldBindJSON(&employee); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": log})
+		c.JSON(http.StatusBadRequest, gin.H{"error": log1})
 		return
 	}
 
@@ -94,7 +104,7 @@ func CreatePosition(c *gin.Context, db *gorm.DB) {
 	var position models.Position
 	// Считываем данные из формы
 	if err := c.ShouldBind(&position); err != nil {
-		c.HTML(http.StatusBadRequest, "position.html", gin.H{"error": log})
+		c.HTML(http.StatusBadRequest, "position.html", gin.H{"error": log1})
 		return
 	}
 
@@ -133,7 +143,7 @@ func UpdatePosition(c *gin.Context, db *gorm.DB) {
 
 	// Считываем новые данные из формы
 	if err := c.ShouldBind(&position); err != nil {
-		c.HTML(http.StatusBadRequest, "position.html", gin.H{"error": log})
+		c.HTML(http.StatusBadRequest, "position.html", gin.H{"error": log1})
 		return
 	}
 

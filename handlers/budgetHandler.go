@@ -9,12 +9,12 @@ import (
 
 // GetBudget - получение текущего бюджета
 func GetBudget(c *gin.Context, db *gorm.DB) {
-	var budget models.Budget
-	if err := db.First(&budget).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Бюджет не найден"})
+	var budgets []models.Budget
+	if err := db.Find(&budgets).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось получить бюджеты"})
 		return
 	}
-	c.JSON(http.StatusOK, budget)
+	c.JSON(http.StatusOK, budgets)
 }
 
 // Хендлер для списка бюджетов
@@ -55,34 +55,62 @@ func CreateBudget(c *gin.Context, db *gorm.DB) {
 
 // UpdateBudget - обновление бюджета
 func UpdateBudget(c *gin.Context, db *gorm.DB) {
-	var budget models.Budget
+	var existingBudget models.Budget
 	id := c.Param("id")
-	if err := db.First(&budget, id).Error; err != nil {
+
+	if err := db.First(&existingBudget, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Бюджет не найден"})
 		return
 	}
 
-	// Получаем данные из запроса JSON
-	if err := c.BindJSON(&budget); err != nil {
+	var input struct {
+		TotalAmount      float64 `json:"total_amount"`
+		MarkupPercentage float64 `json:"markup_percentage"`
+		BonusPercentage  float64 `json:"bonus_percentage"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректные входные данные"})
 		return
 	}
 
-	// Обновляем данные
-	if err := db.Save(&budget).Error; err != nil {
+	// Проверка на отрицательные значения
+	if input.TotalAmount < 0 || input.MarkupPercentage < 0 || input.BonusPercentage < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Числа не могут быть отрицательными"})
+		return
+	}
+
+	// Проверяем, были ли изменения
+	if existingBudget.TotalAmount == input.TotalAmount &&
+		existingBudget.MarkupPercentage == input.MarkupPercentage &&
+		existingBudget.BonusPercentage == input.BonusPercentage {
+		// Если данные не изменились, возвращаем 200 OK без изменений
+		c.JSON(http.StatusOK, existingBudget)
+		return
+	}
+
+	// Если данные изменились, обновляем запись
+	existingBudget.TotalAmount = input.TotalAmount
+	existingBudget.MarkupPercentage = input.MarkupPercentage
+	existingBudget.BonusPercentage = input.BonusPercentage
+
+	if err := db.Save(&existingBudget).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось обновить бюджет"})
 		return
 	}
 
-	c.JSON(http.StatusOK, budget) // Возвращаем обновленный бюджет
+	c.JSON(http.StatusOK, existingBudget)
 }
 
-// DeleteBudget - удаление бюджета
-func DeleteBudget(c *gin.Context, db *gorm.DB) {
-	id := c.Param("id")
-	if err := db.Delete(&models.Budget{}, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось удалить бюджет"})
+// Проверка наличия бюджета в базе данных
+func CheckBudgetExists(c *gin.Context, db *gorm.DB) {
+	var budget models.Budget
+	// Попробуем найти первый бюджет в базе
+	if err := db.First(&budget).Error; err != nil {
+		// Если записи нет, возвращаем статус 404
+		c.JSON(http.StatusNotFound, gin.H{"message": "Бюджет не найден"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Бюджет удален"}) // Возвращаем сообщение об успешном удалении
+	// Если бюджет найден, отправляем статус 200
+	c.JSON(http.StatusOK, gin.H{"message": "Бюджет найден"})
 }

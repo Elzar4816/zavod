@@ -12,24 +12,16 @@ import (
 	"zavod/models"
 )
 
-/*
-НАДО СРАЗУ РЕДИРЕКТ НА СЫРЬЕ СДЕЛАТЬ ПОСЛЕ ЗАКУПКИ
-*/
-// ListRawMaterialPurchases - список закупок сырья
-func ListRawMaterialPurchases(c *gin.Context, db *gorm.DB) {
+func GetPurchases(c *gin.Context, db *gorm.DB) {
 	var purchases []models.RawMaterialPurchase
-	var rawMaterials []models.RawMaterial
-	var employees []models.Employee
-
-	db.Preload("RawMaterial").Preload("Employee").Find(&purchases)
-	db.Find(&rawMaterials)
-	db.Find(&employees)
-
-	c.HTML(http.StatusOK, "raw_material_purchases.html", gin.H{
-		"purchases":    purchases,
-		"rawMaterials": rawMaterials,
-		"employees":    employees, // Передаем список сотрудников в шаблон
-	})
+	if err := db.Preload("RawMaterial").
+		Preload("Employee").
+		Find(&purchases).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось загрузить закупки"})
+		return
+	}
+	// Отдаём чистый слайс — у Gin он сериализуется в JSON-массив
+	c.JSON(http.StatusOK, purchases)
 }
 
 // CreateRawMaterialPurchase - создание закупки сырья
