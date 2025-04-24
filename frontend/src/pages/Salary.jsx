@@ -8,7 +8,8 @@ import {
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
-
+import { theme } from '../theme/theme.jsx';
+import PenIcon from "../assets/pen-svgrepo-com.svg";
 const inputStyle = {
     input: { color: '#fff' },
     label: { color: '#fff' },
@@ -28,7 +29,7 @@ const selectWhiteStyle = {
         "&:hover fieldset": { borderColor: "#888" },
         "&.Mui-focused fieldset": { borderColor: "#646cff" },
         "& .MuiSelect-select": { color: "#000000" },
-        "& .MuiSvgIcon-root": { color: "#fff" },
+        "& .MuiSvgIcon-root": { color: "#000000" },
     },
 };
 
@@ -54,37 +55,6 @@ const glassTableStyle = {
     borderRadius: '12px', border: `1px solid ${glassBorderColor}`, overflow: 'hidden',
 };
 
-const theme = createTheme({
-    typography: { fontFamily: '"Tilda Sans", sans-serif' },
-    components: {
-        MuiButton: {
-            styleOverrides: {
-                root: {
-                    color: '#fff', backgroundColor: '#646cff',
-                    transition: 'all 0.2s ease-in-out',
-                    '&:hover': {
-                        backgroundColor: '#7c7eff',
-                        boxShadow: '0px 4px 12px rgba(100,108,255,0.5)',
-                        transform: 'translateY(-2px)',
-                    },
-                },
-            },
-        },
-        MuiMenuItem: {
-            styleOverrides: {
-                root: {
-                    color: '#fff', backgroundColor: '#2a2a2a',
-                    '&.Mui-selected': { backgroundColor: '#444' },
-                },
-            },
-        },
-        MuiPaper: {
-            styleOverrides: {
-                root: { backgroundColor: '#583474' },
-            },
-        },
-    },
-});
 
 export default function Salary() {
     const currentYear = new Date().getFullYear();
@@ -306,13 +276,17 @@ export default function Salary() {
                                     </TableCell>
                                     {!allIssued && (
                                         <TableCell sx={tableBodyCellStyle} align="center">
+                                            <Tooltip title="Редактировать" placement="top" slotProps={{
+                                                tooltip: { sx: { fontSize:14,p:"10px 14px",bgcolor:"#2a2a2a",color:"#fff",border:"1px solid #646cff",borderRadius:1 }}
+                                            }}>
                                             <Button
                                                 size="small"
-                                                variant="outlined"
+                                                sx={{ minWidth:0, mr:1 }}
                                                 onClick={() => handleSave(s.employee.id, s.total_salary)}
                                             >
-                                                Изменить
+                                                <img src={PenIcon} alt="Ред." width={20} height={20}/>
                                             </Button>
+                                            </Tooltip>
                                         </TableCell>
                                     )}
                                 </TableRow>

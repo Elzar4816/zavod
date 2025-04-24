@@ -7,23 +7,6 @@ import (
 	"zavod/models"
 )
 
-func ListFinishedGoods(c *gin.Context, db *gorm.DB) {
-	var finishedGoods []models.FinishedGood
-	var units []models.Unit
-
-	// Загружаем все готовые товары вместе с их единицами измерения
-	db.Preload("Unit").Find(&finishedGoods)
-
-	// Загружаем все доступные единицы измерения для выпадающего списка
-	db.Find(&units)
-
-	// Передаем данные в шаблон
-	c.HTML(http.StatusOK, "finished_goods.html", gin.H{
-		"finishedGoods": finishedGoods,
-		"units":         units,
-	})
-}
-
 // 🏗 CRUD для Finished Goods
 func CreateFinishedGood(c *gin.Context, db *gorm.DB) {
 	var finishedGood models.FinishedGood

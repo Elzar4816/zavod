@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {
     Box, Paper, Typography, Select, MenuItem, CircularProgress,
 } from '@mui/material';
 import { PieChart } from '@mui/x-charts/PieChart';
 
+const customColors = ['#AF9164', '#C1AA84', '#F7F3E3', '#D5D5CD', '#B3B6B7', '#91685F', '#804133','#6F1A07','#4D1E10'];
 const SalesCard = () => {
     const [sales, setSales] = useState([]);
     const [filter, setFilter] = useState('year');
@@ -32,10 +33,16 @@ const SalesCard = () => {
         return acc;
     }, {});
 
+    // внутри компонента SalesCard:
+    const shuffledColors = useMemo(() => {
+        return [...customColors].sort(() => Math.random() - 0.5);
+    }, []); // перемешивается только один раз при монтировании компонента
+
     const data = Object.entries(salesByProduct).map(([label, value], i) => ({
         id: i,
         value,
         label,
+        color: shuffledColors[i % shuffledColors.length],
     }));
 
     const total = data.reduce((sum, d) => sum + d.value, 0);
@@ -66,7 +73,6 @@ const SalesCard = () => {
                             data,
                             innerRadius: 40,
                             outerRadius: 70,
-                            arcLabel: (item) => `${item.value}`,
                         }]}
                         width={300}
                         height={200}

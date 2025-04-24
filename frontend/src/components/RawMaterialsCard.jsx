@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {
     Box, Paper, Typography, CircularProgress,
 } from '@mui/material';
 import { PieChart } from '@mui/x-charts/PieChart';
+
+const customColors = ['#AF9164', '#C1AA84', '#F7F3E3', '#D5D5CD', '#B3B6B7', '#91685F', '#804133','#6F1A07','#4D1E10'];
 
 const RawMaterialsCard = () => {
     const [materials, setMaterials] = useState([]);
@@ -17,11 +19,18 @@ const RawMaterialsCard = () => {
             });
     }, []);
 
+
+    const shuffledColors =  useMemo(() => {
+        return [...customColors].sort(() => Math.random() - 0.5);
+    }, []);
+
     const data = materials.map((item, index) => ({
         id: index,
         value: item.quantity || 0,
         label: item.name || 'Без названия',
+        color: shuffledColors[index % shuffledColors.length],
     }));
+
 
     const total = data.reduce((sum, d) => sum + d.value, 0);
 
@@ -40,7 +49,6 @@ const RawMaterialsCard = () => {
                             data,
                             innerRadius: 40,
                             outerRadius: 70,
-                            arcLabel: (item) => `${item.value}`,
                         }]}
                         width={300}
                         height={200}

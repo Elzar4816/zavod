@@ -3,6 +3,7 @@ import { Box, Typography, ThemeProvider } from '@mui/material';
 import { theme } from '../theme/theme.jsx';
 import SalesCard from '../components/SalesCard';
 import RawMaterialsCard from '../components/RawMaterialsCard';
+import BudgetCard from "../components/BudgetCard.jsx";
 
 const Home = () => {
     return (
@@ -11,9 +12,19 @@ const Home = () => {
                 <Typography variant="h4" color={'#000000'} gutterBottom>
                     Добро пожаловать!
                 </Typography>
-                <Box display="flex" gap={4} flexWrap="wrap">
-                    <SalesCard />
-                    <RawMaterialsCard />
+                <Box display="flex" flexDirection="column" gap={4}>
+                    <Box sx={{ width: 400 }}>
+                        <BudgetCard /> {/* Бюджет с ограниченной шириной */}
+                    </Box>
+                    {/* Контейнер для карточек, добавляем flexWrap */}
+                    <Box display="flex" flexWrap="wrap" gap={4} justifyContent="flex-start">
+                        <Box sx={{ width: { xs: '100%', sm: 400 } }}>
+                            <SalesCard />
+                        </Box>
+                        <Box sx={{ width: { xs: '100%', sm: 400 } }}>
+                            <RawMaterialsCard />
+                        </Box>
+                    </Box>
                 </Box>
             </Box>
         </ThemeProvider>

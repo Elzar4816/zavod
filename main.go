@@ -16,9 +16,6 @@ func main() {
 	// Инициализация Gin
 	r := gin.Default()
 	r.Use(gin.Recovery())
-	// Настройка статики и шаблонов
-	r.LoadHTMLGlob("templates/*.html") // или конкретный путь к sales.html
-	r.Static("/css", "./css")
 	setupRoutesStaticAndTemplates(r)
 
 	// Регистрация маршрутов

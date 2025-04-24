@@ -7,18 +7,6 @@ import {
 } from '@mui/material';
 import PlusIcon from '../assets/plus-svgrepo-com.svg';
 import { theme } from '../theme/theme.jsx';
-// 🎨 Стили из IngredientsPage
-const modalStyle = {
-    position: 'absolute',
-    top: '50%', left: '50%',
-    transform: 'translate(-50%, -50%)',
-    bgcolor: '#1e1e1e',
-    color: '#fff',
-    boxShadow: 24,
-    p: 4,
-    borderRadius: 2,
-    minWidth: 300,
-};
 
 const inputStyle = {
     input: { color: '#fff' },
@@ -59,7 +47,6 @@ const tableBodyCellStyle = {
 
 const glowColorPrimary = 'rgba(182,186,241,0.24)';
 const glowColorSecondary = '#646cff1a';
-const glassBorderColor = 'rgba(87,71,71,0.59)';
 const glassTableStyle = {
     backgroundColor: 'rgba(0,0,0,0.05)',
     backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',

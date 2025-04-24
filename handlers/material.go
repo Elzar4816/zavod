@@ -9,22 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func ListRawMaterials(c *gin.Context, db *gorm.DB) {
-	var rawMaterials []models.RawMaterial
-	var units []models.Unit
-
-	// Загружаем сырье и доступные единицы измерения
-	db.Preload("Unit").Find(&rawMaterials)
-	db.Find(&units)
-
-	// Передаем данные в шаблон
-	c.HTML(http.StatusOK, "raw_materials.html", gin.H{
-		"rawMaterials": rawMaterials,
-		"units":        units,
-	})
-}
-
-// 🏗 CRUD для Raw Materials
+// CreateRawMaterial 🏗 CRUD для Raw Materials
 func CreateRawMaterial(c *gin.Context, db *gorm.DB) {
 	var rawMaterial models.RawMaterial
 
