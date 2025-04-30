@@ -4,7 +4,10 @@ import {
 } from '@mui/material';
 import { PieChart } from '@mui/x-charts/PieChart';
 
-const customColors = ['#AF9164', '#C1AA84', '#F7F3E3', '#D5D5CD', '#B3B6B7', '#91685F', '#804133','#6F1A07','#4D1E10'];
+const customColors = [
+    '#AF9164', '#C1AA84', '#F7F3E3',
+    '#D5D5CD', '#B3B6B7', '#91685F',
+    '#804133', '#6F1A07', '#4D1E10'];
 const SalesCard = () => {
     const [sales, setSales] = useState([]);
     const [filter, setFilter] = useState('year');

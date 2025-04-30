@@ -7,56 +7,13 @@ import {
 } from '@mui/material';
 import PlusIcon from '../assets/plus-svgrepo-com.svg';
 import { theme } from '../theme/theme.jsx';
-
-const inputStyle = {
-    input: { color: '#fff' },
-    label: { color: '#fff' },
-    '& .MuiOutlinedInput-root': {
-        '& fieldset': { borderColor: '#555' },
-        '&:hover fieldset': { borderColor: '#fff' },
-        '&.Mui-focused fieldset': { borderColor: '#646cff' },
-        backgroundColor: '#2a2a2a',
-        '& .MuiSelect-select': { color: '#fff' },
-    },
-};
-
-const selectWhiteStyle = {
-    '& label': { color: '#fff' },
-    '& label.Mui-focused': { color: '#646cff' },
-    '& .MuiOutlinedInput-root': {
-        backgroundColor: 'none',
-        '& fieldset': { borderColor: '#ccc' },
-        '&:hover fieldset': { borderColor: '#888' },
-        '&.Mui-focused fieldset': { borderColor: '#646cff' },
-        '& .MuiSelect-select': { color: '#fdfdfd' },
-        '& .MuiSvgIcon-root': { color: '#fff' },
-    },
-};
-
-const tableHeadCellStyle = {
-    color: '#fff',
-    backgroundColor: '#6F1A07',
-    fontSize: '20px',
-};
-
-const tableBodyCellStyle = {
-    color: '#3d3d3d',
-    fontSize: '20px',
-    backgroundColor:'#B3B6B7',
-};
-
-const glowColorPrimary = 'rgba(182,186,241,0.24)';
-const glowColorSecondary = '#646cff1a';
-const glassTableStyle = {
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
-    boxShadow: `0 0 20px ${glowColorPrimary}, 0 0 60px ${glowColorSecondary}`,
-    borderRadius: '12px',
-    // border: `1px solid ${glassBorderColor}`,
-    overflow: 'hidden',
-};
-
-
+import {
+    inputStyle,
+    selectWhiteStyle,
+    tableHeadCellStyle,
+    tableBodyCellStyle,
+    glassTableStyle,
+} from '../theme/uiStyles.js';
 
 export default function ProductionPage() {
     const [form, setForm] = useState({
@@ -81,6 +38,13 @@ export default function ProductionPage() {
         setSnackbarSeverity(severity);
         setSnackbarOpen(true);
     };
+
+    function parseError(err) {
+        const error = err?.response?.data?.error;
+        if (typeof error === "string") return error;
+        if (typeof error === "object") return error.message || JSON.stringify(error);
+        return err.message || "Неизвестная ошибка";
+    }
 
     useEffect(() => {
         loadData();
@@ -135,15 +99,18 @@ export default function ProductionPage() {
                 setCreateOpen(false);
                 setForm({ product_id: '', quantity: '', employee_id: '' });
             } else {
-                const errMsg = result?.error || text || 'Неизвестная ошибка';
-                showSnackbar('Ошибка: ' + errMsg, 'error');
+                const error = result?.error;
+                const msg = parseError({ response: { data: { error } } });
+                showSnackbar('Ошибка: ' + msg, 'error');
             }
         } catch (err) {
-            showSnackbar('Ошибка: ' + err.message, 'error');
+            const msg = parseError(err);
+            showSnackbar('Ошибка: ' + msg, 'error');
         } finally {
             setLoading(false);
         }
     };
+
 
     return (
         <ThemeProvider theme={theme}>

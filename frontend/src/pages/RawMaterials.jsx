@@ -12,55 +12,13 @@ import PlusIcon from "../assets/plus-svgrepo-com.svg";
 import PenIcon from "../assets/pen-svgrepo-com.svg";
 import TrashIcon from "../assets/trash-svgrepo-com.svg";
 import { theme } from '../theme/theme.jsx';
-// 🎨 Стили
-const modalStyle = {
-    position: "absolute", top: "50%", left: "50%",
-    transform: "translate(-50%, -50%)",
-    bgcolor: "#1e1e1e", color: "#fff",
-    boxShadow: 24, p: 4, borderRadius: 2, minWidth: 300,
-};
-
-const inputStyle = {
-    input: { color: "#fff" },
-    label: { color: "#fff" },
-    "& .MuiOutlinedInput-root": {
-        "& fieldset": { borderColor: "#555" },
-        "&:hover fieldset": { borderColor: "#fff" },
-        "&.Mui-focused fieldset": { borderColor: "#646cff" },
-        backgroundColor: "#2a2a2a",
-    },
-};
-
-const selectWhiteStyle = {
-    "& label": { color: "#fff" },
-    "& label.Mui-focused": { color: "#646cff" },
-    "& .MuiOutlinedInput-root": {
-        backgroundColor: "none",
-        "& fieldset": { borderColor: "#ccc" },
-        "&:hover fieldset": { borderColor: "#888" },
-        "&.Mui-focused fieldset": { borderColor: "#646cff" },
-        "& .MuiSelect-select": { color: "#fff" },
-        "& .MuiSvgIcon-root": { color: "#fff" },
-    },
-};
-
-const tableHeadCellStyle = {
-    color: "#fff", backgroundColor: "#6F1A07", fontSize: "20px"
-};
-
-const tableBodyCellStyle = {
-    color: "#3d3d3d", fontSize: "20px", backgroundColor: "#B3B6B7"
-};
-
-const glowColorPrimary = "rgba(182,186,241,0.24)";
-const glowColorSecondary = "#646cff1a";
-
-const glassTableStyle = {
-    backgroundColor: "rgba(0,0,0,0.05)",
-    backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-    boxShadow: `0 0 20px ${glowColorPrimary}, 0 0 60px ${glowColorSecondary}`,
-    borderRadius: "12px", overflow: "hidden"
-};
+import {
+    inputStyle,
+    selectWhiteStyle,
+    tableHeadCellStyle,
+    tableBodyCellStyle,
+    glassTableStyle,
+} from '../theme/uiStyles.js';
 
 export default function RawMaterialsPage() {
     const [rawMaterials, setRawMaterials] = useState([]);
@@ -84,7 +42,13 @@ export default function RawMaterialsPage() {
         setSnackbarOpen(true);
     };
 
-    // загрузка
+    // 💡 утилита
+    function parseError(err) {
+        const error = err.response?.data?.error;
+        return typeof error === "string" ? error : error?.message || err.message;
+    }
+
+// загрузка
     useEffect(() => {
         loadData();
     }, []);
@@ -99,7 +63,8 @@ export default function RawMaterialsPage() {
             setRawMaterials(rmRes.data);
             setUnits(uRes.data);
         } catch (err) {
-            showSnackbar("Ошибка загрузки: " + err.message, "error");
+            const msg = parseError(err);
+            showSnackbar("Ошибка загрузки: " + msg, "error");
         } finally {
             setLoading(false);
         }
@@ -110,7 +75,7 @@ export default function RawMaterialsPage() {
         setForm(f => ({ ...f, [name]: value }));
     };
 
-    // создать
+// создать
     const handleCreate = async () => {
         const { name, quantity, total_amount, unit_id } = form;
         if (!name || !quantity || !total_amount || !unit_id) {
@@ -130,14 +95,14 @@ export default function RawMaterialsPage() {
             setForm({ name: "", quantity: "", total_amount: "", unit_id: "" });
             await loadData();
         } catch (err) {
-            showSnackbar("Ошибка: " + err.message, "error");
+            const msg = parseError(err);
+            showSnackbar("Ошибка: " + msg, "error");
         } finally {
             setLoading(false);
         }
     };
 
     const handleEdit = async () => {
-        // простая валидация пустых полей
         if (!current.name || !current.quantity || !current.total_amount || !current.unit_id) {
             showSnackbar("Заполните все поля", "error");
             return;
@@ -145,7 +110,6 @@ export default function RawMaterialsPage() {
 
         setLoading(true);
         try {
-            // собираем тело запроса без id, приводим все нужные поля к числам
             const payload = {
                 name: current.name,
                 quantity: Number(current.quantity),
@@ -153,26 +117,20 @@ export default function RawMaterialsPage() {
                 unit_id: Number(current.unit_id),
             };
 
-            await axios.put(
-                `/api/raw-material/update/${current.id}`,
-                payload,
-                { headers: { "Content-Type": "application/json" } }
-            );
+            await axios.put(`/api/raw-material/update/${current.id}`, payload);
 
             showSnackbar("Изменено");
             setEditOpen(false);
             await loadData();
         } catch (err) {
-            // если сервер вернёт JSON { error: "..." }, покажем его
-            const msg = err.response?.data?.error || err.message;
+            const msg = parseError(err);
             showSnackbar("Ошибка: " + msg, "error");
         } finally {
             setLoading(false);
         }
     };
 
-
-    // удалить
+// удалить
     const handleDelete = async () => {
         setLoading(true);
         try {
@@ -181,11 +139,13 @@ export default function RawMaterialsPage() {
             setDeleteOpen(false);
             await loadData();
         } catch (err) {
-            showSnackbar("Ошибка: " + err.message, "error");
+            const msg = parseError(err);
+            showSnackbar("Ошибка: " + msg, "error");
         } finally {
             setLoading(false);
         }
     };
+
 
     return (
         <ThemeProvider theme={theme}>

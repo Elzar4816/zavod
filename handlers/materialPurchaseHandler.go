@@ -1,137 +1,102 @@
 package handlers
 
 import (
-	"encoding/json"
-	"io"
-	"log"
 	"net/http"
 	"time"
+	"zavod/models"
+	"zavod/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"zavod/models"
 )
+
+const purchaseCode = "ERR_PURCHASE"
 
 func GetPurchases(c *gin.Context, db *gorm.DB) {
 	var purchases []models.RawMaterialPurchase
 	if err := db.Preload("RawMaterial").
 		Preload("Employee").
 		Find(&purchases).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось загрузить закупки"})
+		utils.InternalError(c, "Не удалось загрузить закупки")
 		return
 	}
-	// Отдаём чистый слайс — у Gin он сериализуется в JSON-массив
 	c.JSON(http.StatusOK, purchases)
 }
 
-// CreateRawMaterialPurchase - создание закупки сырья
+// CreateRawMaterialPurchase Создание закупки
 func CreateRawMaterialPurchase(c *gin.Context, db *gorm.DB) {
 	var purchase models.RawMaterialPurchase
 
-	// Логируем тело запроса
-	body, _ := io.ReadAll(c.Request.Body)
-	log.Println("Request Body:", string(body))
-
-	// Пробуем распарсить JSON
-	if err := json.Unmarshal(body, &purchase); err != nil {
-		log.Println("Ошибка парсинга JSON:", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректные входные данные"})
+	if err := c.ShouldBindJSON(&purchase); err != nil {
+		utils.BadRequest(c, "Некорректные входные данные")
 		return
 	}
 
-	// Логируем распарсенные данные
-	log.Println("Parsed purchase:", purchase)
-
-	// Проверяем бюджет
+	// 1. Проверяем бюджет
 	var budget models.Budget
 	if err := db.First(&budget).Error; err != nil {
-		log.Println("Ошибка поиска бюджета:", err)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Бюджет не найден"})
+		utils.NotFound(c, "Бюджет не найден")
 		return
 	}
-
-	// Проверяем, хватает ли денег
 	if budget.TotalAmount < purchase.TotalAmount {
-		log.Println("Недостаточно средств в бюджете:", budget.TotalAmount, "<", purchase.TotalAmount)
-		c.JSON(http.StatusConflict, gin.H{"error": "Недостаточно средств в бюджете"})
+		utils.Conflict(c, "Недостаточно средств в бюджете")
 		return
 	}
-
-	// Вычитаем деньги из бюджета
 	budget.TotalAmount -= purchase.TotalAmount
-	if err := db.Save(&budget).Error; err != nil {
-		log.Println("Ошибка обновления бюджета:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка обновления бюджета"})
+	if !utils.SaveEntity(c, db, &budget, "ERR_BUDGET") {
 		return
 	}
 
-	// Добавляем дату и создаем закупку
+	// 2. Закупка
 	purchase.PurchaseDate = time.Now()
-	if err := db.Create(&purchase).Error; err != nil {
-		log.Println("Ошибка создания закупки:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка создания закупки"})
+	if !utils.SaveEntity(c, db, &purchase, purchaseCode) {
 		return
 	}
 
-	// Обновляем количество и общую сумму сырья
+	// 3. Обновление сырья
 	var rawMaterial models.RawMaterial
-	if err := db.First(&rawMaterial, purchase.RawMaterialID).Error; err != nil {
-		log.Println("Ошибка поиска сырья:", err)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Сырье не найдено"})
+	if !utils.FindByID(c, db, &rawMaterial, "raw_material_id", "ERR_RAW") {
 		return
 	}
 
 	rawMaterial.Quantity += purchase.Quantity
-	rawMaterial.TotalAmount += purchase.TotalAmount // Прибавляем общую сумму закупки
-	if err := db.Save(&rawMaterial).Error; err != nil {
-		log.Println("Ошибка обновления количества и суммы сырья:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка обновления количества и суммы сырья"})
+	rawMaterial.TotalAmount += purchase.TotalAmount
+	if !utils.SaveEntity(c, db, &rawMaterial, "ERR_RAW") {
 		return
 	}
 
-	// Возвращаем корректный JSON
 	c.JSON(http.StatusOK, gin.H{"id": purchase.ID, "message": "Закупка успешно создана"})
 }
 
-// DeleteRawMaterialPurchase - удаление закупки сырья
+// DeleteRawMaterialPurchase Удаление закупки сырья
 func DeleteRawMaterialPurchase(c *gin.Context, db *gorm.DB) {
-	id := c.Param("id")
 	var purchase models.RawMaterialPurchase
-
-	if err := db.First(&purchase, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Закупка не найдена"})
+	if !utils.FindByID(c, db, &purchase, "id", purchaseCode) {
 		return
 	}
 
-	// Возвращаем сумму в бюджет
+	// 1. Вернуть сумму в бюджет
 	var budget models.Budget
 	if err := db.First(&budget).Error; err == nil {
 		budget.TotalAmount += purchase.TotalAmount
-		if err := db.Save(&budget).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка обновления бюджета"})
+		if !utils.SaveEntity(c, db, &budget, "ERR_BUDGET") {
 			return
 		}
 	}
 
-	// Уменьшаем количество и общую сумму сырья
+	// 2. Обновить сырьё
 	var rawMaterial models.RawMaterial
-	if err := db.First(&rawMaterial, purchase.RawMaterialID).Error; err != nil {
-		log.Println("Ошибка поиска сырья при удалении закупки:", err)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Сырье не найдено"})
+	if !utils.FindByID(c, db, &rawMaterial, "raw_material_id", "ERR_RAW") {
 		return
 	}
-
 	rawMaterial.Quantity -= purchase.Quantity
-	rawMaterial.TotalAmount -= purchase.TotalAmount // Вычитаем общую сумму закупки
-	if err := db.Save(&rawMaterial).Error; err != nil {
-		log.Println("Ошибка обновления количества и суммы сырья при удалении закупки:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка обновления количества и суммы сырья"})
+	rawMaterial.TotalAmount -= purchase.TotalAmount
+	if !utils.SaveEntity(c, db, &rawMaterial, "ERR_RAW") {
 		return
 	}
 
-	// Удаляем запись
-	if err := db.Delete(&purchase).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка удаления закупки"})
+	// 3. Удаление закупки
+	if !utils.DeleteEntity(c, db, &purchase, purchaseCode) {
 		return
 	}
 

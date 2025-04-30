@@ -48,6 +48,9 @@ func ConnectDB() *gorm.DB {
 		&models.ProductProduction{},
 		&models.Budget{},
 		&models.Salary{},
+		&models.Credit{},
+		&models.CreditPayment{},
+		&models.Session{},
 	)
 	return db
 }

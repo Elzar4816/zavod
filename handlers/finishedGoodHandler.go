@@ -5,55 +5,70 @@ import (
 	"gorm.io/gorm"
 	"net/http"
 	"zavod/models"
+	"zavod/utils"
 )
 
-// 🏗 CRUD для Finished Goods
+const fgCode = "ERR_FINISHED_GOOD"
+
+// CreateFinishedGood Создание продукта
 func CreateFinishedGood(c *gin.Context, db *gorm.DB) {
-	var finishedGood models.FinishedGood
-
-	// Получаем данные в формате JSON
-	if err := c.BindJSON(&finishedGood); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input data"})
+	var product models.FinishedGood
+	if err := c.ShouldBindJSON(&product); err != nil {
+		utils.BadRequest(c, "Некорректные данные продукта")
 		return
 	}
 
-	// Сохраняем в базу
-	db.Create(&finishedGood)
-
-	// Возвращаем успешный ответ с id
-	c.JSON(http.StatusOK, finishedGood)
-}
-
-func DeleteFinishedGood(c *gin.Context, db *gorm.DB) {
-	id := c.Param("id")
-
-	// Ищем и удаляем
-	if err := db.Delete(&models.FinishedGood{}, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Finished good not found"})
+	if product.Name == "" {
+		utils.BadRequest(c, "Название не может быть пустым")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Готовая продукция удалена"})
+	if !utils.SaveEntity(c, db, &product, fgCode) {
+		return
+	}
+
+	c.JSON(http.StatusOK, product)
 }
 
+// UpdateFinishedGood Обновление
 func UpdateFinishedGood(c *gin.Context, db *gorm.DB) {
-	var finishedGood models.FinishedGood
-	id := c.Param("id")
-
-	// Ищем запись
-	if err := db.First(&finishedGood, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Finished good not found"})
+	var product models.FinishedGood
+	if !utils.FindByID(c, db, &product, "id", fgCode) {
 		return
 	}
 
-	// Получаем данные в формате JSON
-	if err := c.BindJSON(&finishedGood); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input data"})
+	if err := c.ShouldBindJSON(&product); err != nil {
+		utils.BadRequest(c, "Некорректные данные")
 		return
 	}
 
-	// Сохраняем изменения
-	db.Save(&finishedGood)
+	if !utils.SaveEntity(c, db, &product, fgCode) {
+		return
+	}
 
-	c.JSON(http.StatusOK, finishedGood)
+	c.JSON(http.StatusOK, product)
+}
+
+// DeleteFinishedGood Удаление
+func DeleteFinishedGood(c *gin.Context, db *gorm.DB) {
+	var product models.FinishedGood
+	if !utils.FindByID(c, db, &product, "id", fgCode) {
+		return
+	}
+
+	if !utils.DeleteEntity(c, db, &product, fgCode) {
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Продукт удалён"})
+}
+
+// GetFinishedGoods Получение всех продуктов
+func GetFinishedGoods(c *gin.Context, db *gorm.DB) {
+	var goods []models.FinishedGood
+	if err := db.Find(&goods).Error; err != nil {
+		utils.InternalError(c, "Не удалось загрузить список продуктов")
+		return
+	}
+	c.JSON(http.StatusOK, goods)
 }

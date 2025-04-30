@@ -12,68 +12,15 @@ import {
 import PenIcon from "../assets/pen-svgrepo-com.svg";
 import TrashIcon from "../assets/trash-svgrepo-com.svg";
 import PlusIcon from "../assets/plus-svgrepo-com.svg";
-
-// 🎨 Стили
-const modalStyle = {
-    position: "absolute", top: "50%", left: "50%",
-    transform: "translate(-50%, -50%)",
-    bgcolor: "#1e1e1e", color: "#fff",
-    boxShadow: 24, p: 4, borderRadius: 2, minWidth: 300,
-};
-
-const inputStyle = {
-    input: { color: "#fff" },
-    label: { color: "#fff" },
-    "& .MuiOutlinedInput-root": {
-        "& fieldset": { borderColor: "#555" },
-        "&:hover fieldset": { borderColor: "#fff" },
-        "&.Mui-focused fieldset": { borderColor: "#646cff" },
-        backgroundColor: "#2a2a2a",
-    },
-};
-
-const selectWhiteStyleForDropper = {
-    "& label": { color: "#000000" },
-    "& label.Mui-focused": { color: "#646cff" },
-    "& .MuiOutlinedInput-root": {
-        backgroundColor: "none",
-        "& fieldset": { borderColor: "#ccc" },
-        "&:hover fieldset": { borderColor: "#888" },
-        "&.Mui-focused fieldset": { borderColor: "#646cff" },
-        "& .MuiSelect-select": { color: "#000000" },
-        "& .MuiSvgIcon-root": { color: "#fff" },
-    },
-};
-const selectWhiteStyle = {
-    "& label": { color: "#ffffff" },
-    "& label.Mui-focused": { color: "#646cff" },
-    "& .MuiOutlinedInput-root": {
-        backgroundColor: "none",
-        "& fieldset": { borderColor: "#ccc" },
-        "&:hover fieldset": { borderColor: "#888" },
-        "&.Mui-focused fieldset": { borderColor: "#646cff" },
-        "& .MuiSelect-select": { color: "#ffffff" },
-        "& .MuiSvgIcon-root": { color: "#fff" },
-    },
-};
-
-const tableHeadCellStyle = {
-    color: "#fff", backgroundColor: "#6F1A07", fontSize: "20px"
-};
-
-const tableBodyCellStyle = {
-    color: "#3d3d3d", fontSize: "20px", backgroundColor: "#B3B6B7"
-};
-
-const glowColorPrimary = "rgba(182,186,241,0.24)";
-const glowColorSecondary = "#646cff1a";
-const glassTableStyle = {
-    backgroundColor: "rgba(0,0,0,0.05)",
-    backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-    boxShadow: `0 0 20px ${glowColorPrimary}, 0 0 60px ${glowColorSecondary}`,
-    borderRadius: "12px", overflow: "hidden",
-};
-
+import {
+    inputStyle,
+    selectWhiteStyle,
+    tableHeadCellStyle,
+    tableBodyCellStyle,
+    glassTableStyle,
+    selectWhiteStyleForDropper,
+    modalStyle
+} from '../theme/uiStyles.js';
 
 
 export default function IngredientsPage() {
@@ -101,6 +48,12 @@ export default function IngredientsPage() {
         setSnackbarSeverity(sev);
         setSnackbarOpen(true);
     };
+    function parseError(err) {
+        const error = err?.response?.data?.error;
+        if (typeof error === "string") return error;
+        if (typeof error === "object") return error.message || JSON.stringify(error);
+        return err.message || "Неизвестная ошибка";
+    }
 
     // Загрузка данных
     useEffect(() => {
@@ -116,9 +69,10 @@ export default function IngredientsPage() {
                     setForm(f => ({ ...f, product_id: finishedGoods[0].id }));
                 }
             })
-            .catch(e => showSnackbar("Ошибка загрузки: " + e.message, "error"))
+            .catch(e => showSnackbar("Ошибка загрузки: " + parseError(e), "error"))
             .finally(() => setLoading(false));
     }, []);
+
 
     // Смена продукта
     useEffect(() => {
@@ -148,7 +102,6 @@ export default function IngredientsPage() {
                 raw_material_id: +form.raw_material_id,
                 quantity: +form.quantity,
             });
-            // обновляем список
             const r = await axios.get("/api/ingredients");
             setIngredients(r.data.ingredients);
             setRawMaterials(r.data.rawMaterials);
@@ -157,7 +110,7 @@ export default function IngredientsPage() {
             setCreateOpen(false);
             showSnackbar("Ингредиент добавлен");
         } catch (e) {
-            showSnackbar("Ошибка: " + e.message, "error");
+            showSnackbar("Ошибка: " + parseError(e), "error");
         } finally {
             setLoading(false);
         }
@@ -176,7 +129,7 @@ export default function IngredientsPage() {
                 setEditOpen(false);
                 showSnackbar("Изменено");
             })
-            .catch(e => showSnackbar("Ошибка: " + e.message, "error"))
+            .catch(e => showSnackbar("Ошибка: " + parseError(e), "error"))
             .finally(() => setLoading(false));
     };
 
@@ -191,7 +144,7 @@ export default function IngredientsPage() {
                 setDeleteOpen(false);
                 showSnackbar("Удалено");
             })
-            .catch(e => showSnackbar("Ошибка: " + e.message, "error"))
+            .catch(e => showSnackbar("Ошибка: " + parseError(e), "error"))
             .finally(() => setLoading(false));
     };
 
@@ -344,7 +297,8 @@ export default function IngredientsPage() {
 
                 {/* EDIT */}
                 <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
-                    <DialogTitle sx={modalStyle}>Редактировать количество</DialogTitle>
+                    <DialogTitle sx={{ bgcolor: "#1e1e1e", color: "#fff" }}>Редактировать количество</DialogTitle>
+
                     <DialogContent sx={{ bgcolor: "#1e1e1e", color: "#fff" }}>
                         <TextField
                             fullWidth margin="dense" label="Количество" type="number"
@@ -363,7 +317,8 @@ export default function IngredientsPage() {
 
                 {/* DELETE */}
                 <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} fullWidth maxWidth="xs">
-                    <DialogTitle sx={modalStyle}>Удалить запись?</DialogTitle>
+                    <DialogTitle sx={{ bgcolor: "#1e1e1e", color: "#fff" }}>Удалить запись?</DialogTitle>
+
                     <DialogActions sx={{ bgcolor: "#1e1e1e" }}>
                         <Button color="error" onClick={handleDelete} disabled={loading}>
                             {loading ? <CircularProgress size={24} /> : "Удалить"}

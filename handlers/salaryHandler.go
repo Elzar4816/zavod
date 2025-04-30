@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"strconv"
 	"zavod/models"
+	"zavod/utils"
 )
 
-// Получение зарплат за конкретный месяц и год
+// GetSalaries Получение зарплат за конкретный месяц и год
 func GetSalaries(c *gin.Context, db *gorm.DB) {
 	yearStr := c.Query("year")
 	monthStr := c.Query("month")
@@ -17,16 +18,15 @@ func GetSalaries(c *gin.Context, db *gorm.DB) {
 	month, err2 := strconv.Atoi(monthStr)
 
 	if err1 != nil || err2 != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверные параметры года или месяца"})
+		utils.BadRequest(c, "Неверные параметры года или месяца")
 		return
 	}
 
 	var salaries []models.Salary
-
 	if err := db.Preload("Employee").
 		Where("year = ? AND month = ?", year, month).
 		Find(&salaries).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка при получении данных"})
+		utils.InternalError(c, "Ошибка при получении зарплат")
 		return
 	}
 
@@ -34,28 +34,22 @@ func GetSalaries(c *gin.Context, db *gorm.DB) {
 }
 
 type MonthRequest struct {
-	Year  int `json:"year"`
-	Month int `json:"month"`
+	Year  int `json:"year" binding:"required"`
+	Month int `json:"month" binding:"required"`
 }
 
-// Генерация зарплат (вызов процедуры generate_salaries_for_month)
-type GenerateSalariesRequest struct {
-	Year  int `json:"year"`
-	Month int `json:"month"`
-}
-
+// GenerateSalaries Генерация зарплат
 func GenerateSalaries(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req GenerateSalariesRequest
+		var req MonthRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
+			utils.BadRequest(c, "Неверный формат запроса")
 			return
 		}
 
-		// Вызов процедуры, если записей нет
 		sql := `CALL generate_salaries_for_month(?, ?)`
 		if err := db.Exec(sql, req.Year, req.Month).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			utils.InternalError(c, "Ошибка при генерации зарплат")
 			return
 		}
 
@@ -63,51 +57,44 @@ func GenerateSalaries(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-type IssueSalariesRequest struct {
-	Year  int `json:"year"`
-	Month int `json:"month"`
-}
-
+// IssueSalaries Выдача зарплат
 func IssueSalaries(c *gin.Context, db *gorm.DB) {
-	var req IssueSalariesRequest
+	var req MonthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный формат запроса"})
+		utils.BadRequest(c, "Неверный формат запроса")
 		return
 	}
 
 	sql := `CALL issue_salaries_for_month(?, ?)`
 	if err := db.Exec(sql, req.Year, req.Month).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.InternalError(c, "Ошибка при выдаче зарплат")
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Зарплата успешно выдана"})
 }
-func ShowSalaryDistributionPage() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.HTML(http.StatusOK, "salary_distribution.html", gin.H{})
-	}
-}
+
+// UpdateSalaryTotalHandler Обновление суммы зарплаты вручную
 func UpdateSalaryTotalHandler(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req struct {
-			EmployeeID  int     `json:"employee_id"`
-			Year        int     `json:"year"`
-			Month       int     `json:"month"`
-			TotalSalary float64 `json:"total_salary"`
+			EmployeeID  int     `json:"employee_id" binding:"required"`
+			Year        int     `json:"year" binding:"required"`
+			Month       int     `json:"month" binding:"required"`
+			TotalSalary float64 `json:"total_salary" binding:"required"`
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(400, gin.H{"error": "Неверные данные"})
+			utils.BadRequest(c, "Неверные данные")
 			return
 		}
 
 		if err := db.Exec("CALL update_salary_total(?, ?, ?, ?)",
 			req.EmployeeID, req.Year, req.Month, req.TotalSalary).Error; err != nil {
-			c.JSON(500, gin.H{"error": err.Error()})
+			utils.InternalError(c, "Ошибка при обновлении зарплаты")
 			return
 		}
 
-		c.JSON(200, gin.H{"message": "Обновлено"})
+		c.JSON(http.StatusOK, gin.H{"message": "Обновлено"})
 	}
 }

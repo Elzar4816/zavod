@@ -17,6 +17,12 @@ type Employee struct {
 	Salary     float64  `json:"salary" gorm:"not null"`
 	Address    string   `json:"address" gorm:"type:varchar(200)"`
 	Phone      string   `json:"phone" gorm:"type:varchar(20)"`
+
+	// Добавленные поля для авторизации
+	Login       string       `json:"login" gorm:"unique;type:varchar(50);not null"`
+	Email       string       `json:"email" gorm:"unique;type:varchar(100);not null"`
+	Password    string       `json:"-" gorm:"type:varchar(255);"` // "-" значит не отдавать паро
+	Permissions []Permission `gorm:"many2many:employee_permissions;" json:"permissions"`
 }
 
 func (Employee) TableName() string {

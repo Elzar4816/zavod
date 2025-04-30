@@ -1,60 +1,23 @@
 // src/pages/Salary.jsx
+import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import {
     Box, Button, TextField, Select, MenuItem, InputLabel, FormControl,
     Container, Typography, Table, TableHead, TableRow, TableCell,
     TableBody, TableContainer, Paper, CircularProgress, Snackbar,
-    Alert, ThemeProvider, createTheme, Tooltip
+    Alert, ThemeProvider,  Tooltip
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { theme } from '../theme/theme.jsx';
 import PenIcon from "../assets/pen-svgrepo-com.svg";
-const inputStyle = {
-    input: { color: '#fff' },
-    label: { color: '#fff' },
-    '& .MuiOutlinedInput-root': {
-        '& fieldset': { borderColor: '#555' },
-        '&:hover fieldset': { borderColor: '#fff' },
-        '&.Mui-focused fieldset': { borderColor: '#646cff' },
-        backgroundColor: '#2a2a2a',
-    },
-};
-const selectWhiteStyle = {
-    "& label": { color: "#000000" },
-    "& label.Mui-focused": { color: "#646cff" },
-    "& .MuiOutlinedInput-root": {
-        backgroundColor: "none",
-        "& fieldset": { borderColor: "#ccc" },
-        "&:hover fieldset": { borderColor: "#888" },
-        "&.Mui-focused fieldset": { borderColor: "#646cff" },
-        "& .MuiSelect-select": { color: "#000000" },
-        "& .MuiSvgIcon-root": { color: "#000000" },
-    },
-};
-
-const tableHeadCellStyle = {
-    color: '#fff',
-    backgroundColor: '#6F1A07',
-    fontSize: '20px',
-};
-
-const tableBodyCellStyle = {
-    color: '#3d3d3d',
-    fontSize: '20px',
-    backgroundColor: '#B3B6B7',
-};
-
-const glowColorPrimary   = 'rgba(182,186,241,0.24)';
-const glowColorSecondary = '#646cff1a';
-const glassBorderColor   = 'rgba(87,71,71,0.59)';
-const glassTableStyle = {
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
-    boxShadow: `0 0 20px ${glowColorPrimary}, 0 0 60px ${glowColorSecondary}`,
-    borderRadius: '12px', border: `1px solid ${glassBorderColor}`, overflow: 'hidden',
-};
-
+import {
+    inputStyle,
+    tableHeadCellStyle,
+    tableBodyCellStyle,
+    glassTableStyle,
+    selectWhiteStyleForDropper
+} from '../theme/uiStyles.js';
 
 export default function Salary() {
     const currentYear = new Date().getFullYear();
@@ -76,32 +39,49 @@ export default function Salary() {
     // определяем, все ли уже выданы
     const allIssued = salaries.length > 0 && salaries.every(s => s.status === true);
 
+
+    function parseError(err) {
+        try {
+            const error = err?.response?.data?.error || err?.message || err;
+            if (typeof error === "string") return error;
+            if (typeof error === "object") return error.message || JSON.stringify(error);
+            return "Неизвестная ошибка";
+        } catch (e) {
+            return "Ошибка парсинга";
+        }
+    }
+
+    const handleTotalChange = (idx, value) => {
+        const updated = [...salaries];
+        updated[idx].total_salary = value; // сохраняем строку (или пустую)
+        setSalaries(updated);
+    };
+
     // load/generate salaries whenever year/month change
     useEffect(() => {
         async function load() {
             if (!year || !month) return;
             setLoading(true);
+
             try {
-                // генерация (игнорируем 409)
-                await fetch('/api/generate-salaries', {
-                    method:'POST',
-                    headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({ year, month })
-                });
-            } catch(_) {}
-            try {
-                const res = await fetch(`/api/salaries?year=${year}&month=${month}`);
-                if (!res.ok) throw new Error('Ошибка при получении данных');
-                const data = await res.json();
-                if (data.message) {
-                    showSnackbar(data.message, 'info');
-                    setSalaries([]);
-                } else {
-                    setSalaries(data);
+                const genRes = await axios.post('/api/generate-salaries', { year, month });
+                const msg = genRes.data.message?.toLowerCase() || "";
+
+                if (msg.includes("рассчитаны впервые")) {
+                    showSnackbar("Зарплаты успешно сгенерированы", "success");
+                } else if (msg.includes("пересчитаны")) {
+                    showSnackbar("Зарплаты были пересчитаны повторно", "info");
                 }
-            } catch(err) {
-                console.error(err);
-                showSnackbar(err.message, 'error');
+
+            } catch (err) {
+                showSnackbar(parseError(err), "error");
+            }
+
+            try {
+                const res = await axios.get(`/api/salaries?year=${year}&month=${month}`);
+                setSalaries(res.data);
+            } catch (err) {
+                showSnackbar(parseError(err), "error");
             } finally {
                 setLoading(false);
             }
@@ -109,40 +89,36 @@ export default function Salary() {
         load();
     }, [year, month]);
 
-    // recalc total to pay
-    const totalToPay = salaries.reduce((sum, s) => sum + (parseFloat(s.total_salary)||0), 0);
 
-    // handle manual edit of total_salary
-    const handleTotalChange = (idx, value) => {
-        const updated = [...salaries];
-        updated[idx].total_salary = parseFloat(value) || 0;
-        setSalaries(updated);
-    };
-
-    // issue salaries
+// issue salaries
     const issueSalaries = async () => {
         setLoading(true);
         try {
             const res = await fetch('/api/salaries/issue', {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ year, month })
             });
-            if (!res.ok) throw new Error('Недостаточно денег в бюджете');
             const data = await res.json();
+
+            if (!res.ok) throw new Error(data?.error?.message || 'Ошибка при выдаче зарплат');
+
             showSnackbar(data.message || 'Зарплата успешно выдана', 'success');
-            // обновим статусы
+
             const fresh = await fetch(`/api/salaries?year=${year}&month=${month}`);
             const arr = await fresh.json();
             setSalaries(arr);
-        } catch(err) {
-            showSnackbar(err.message, 'error');
+        } catch (err) {
+            showSnackbar(parseError(err), 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    // сохраняет измененную зарплату по сотруднику
+
+    const totalToPay = salaries.reduce((sum, s) => sum + (parseFloat(s.total_salary)||0), 0);
+
+// сохраняет измененную зарплату по сотруднику
     const handleSave = async (employeeId, totalSalary) => {
         try {
             const res = await fetch('/api/salaries/update', {
@@ -152,17 +128,20 @@ export default function Salary() {
                     employee_id: employeeId,
                     year,
                     month,
-                    total_salary: totalSalary
+                    total_salary: parseFloat(totalSalary) || 0
                 })
             });
-            if (!res.ok) throw new Error('Ошибка при сохранении');
             const data = await res.json();
+
+            if (!res.ok) throw new Error(data?.error?.message || 'Ошибка при сохранении');
+
             showSnackbar(data.message || 'Сумма сохранена', 'success');
         } catch (err) {
-            console.error(err);
-            showSnackbar(err.message, 'error');
+            showSnackbar(parseError(err), 'error');
         }
     };
+
+
 
     return (
         <ThemeProvider theme={theme}>
@@ -172,7 +151,7 @@ export default function Salary() {
                 </Typography>
 
                 <Box sx={{ display:'flex', gap:2, mb:3 }}>
-                    <FormControl size="small" sx={selectWhiteStyle}>
+                    <FormControl size="small" sx={selectWhiteStyleForDropper}>
                         <InputLabel>Год</InputLabel>
                         <Select
                             value={year}
@@ -184,7 +163,7 @@ export default function Salary() {
                         </Select>
                     </FormControl>
 
-                    <FormControl size="small" sx={selectWhiteStyle}>
+                    <FormControl size="small" sx={selectWhiteStyleForDropper}>
                         <InputLabel>Месяц</InputLabel>
                         <Select
                             value={month}
@@ -262,11 +241,12 @@ export default function Salary() {
                                             <TextField
                                                 type="number"
                                                 size="small"
-                                                value={s.total_salary.toFixed(2)}
+                                                value={s.total_salary !== null && s.total_salary !== undefined ? String(s.total_salary) : ""}
                                                 onChange={e => handleTotalChange(idx, e.target.value)}
                                                 sx={inputStyle}
                                                 inputProps={{ step:"0.01" }}
                                             />
+
                                         )}
                                     </TableCell>
                                     <TableCell sx={tableBodyCellStyle} align="center">
@@ -279,13 +259,13 @@ export default function Salary() {
                                             <Tooltip title="Редактировать" placement="top" slotProps={{
                                                 tooltip: { sx: { fontSize:14,p:"10px 14px",bgcolor:"#2a2a2a",color:"#fff",border:"1px solid #646cff",borderRadius:1 }}
                                             }}>
-                                            <Button
-                                                size="small"
-                                                sx={{ minWidth:0, mr:1 }}
-                                                onClick={() => handleSave(s.employee.id, s.total_salary)}
-                                            >
-                                                <img src={PenIcon} alt="Ред." width={20} height={20}/>
-                                            </Button>
+                                                <Button
+                                                    size="small"
+                                                    sx={{ minWidth:0, mr:1 }}
+                                                    onClick={() => handleSave(s.employee.id, s.total_salary)}
+                                                >
+                                                    <img src={PenIcon} alt="Ред." width={20} height={20}/>
+                                                </Button>
                                             </Tooltip>
                                         </TableCell>
                                     )}

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Tooltip } from "@mui/material";
+import { Tooltip, Collapse } from "@mui/material";
 
 import StraightenIcon from "@mui/icons-material/Straighten";
 import CategoryIcon from "@mui/icons-material/Category";
@@ -11,6 +11,14 @@ import FactoryIcon from "@mui/icons-material/Factory";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import PaidIcon from "@mui/icons-material/Paid";
 import HomeIcon from "@mui/icons-material/Home";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import LogoutIcon from "@mui/icons-material/Logout"; // 👈 импорт иконки выхода
+import AccessibleLinkButton from "../components/AccessibleLinkButton"; // поправь путь если нужно
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance"; // Бюджет
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";       // Зарплаты
+import PointOfSaleIcon from "@mui/icons-material/PointOfSale";       // Продажи
+import CreditScoreIcon from "@mui/icons-material/CreditScore";       // Кредиты
 
 // стили самого сайдбара
 const sidebarStyle = (isOpen) => ({
@@ -30,7 +38,7 @@ const sidebarStyle = (isOpen) => ({
 const burgerStyle = (isOpen) => ({
     position: "fixed",
     top: 20,
-    left: isOpen ? 250 + 40 : 80 + 20,
+    left: isOpen ? 290 : 100,
     width: 30,
     height: 25,
     display: "flex",
@@ -65,63 +73,109 @@ const menuItemBase = {
     color: "#000",
     fontSize: "20px",
     transition: "all 0.2s ease-in-out",
+    whiteSpace: "nowrap",
 };
+
+// hover-стиль для ссылок
 const hoverStyle = {
     transform: "translateY(-2px)",
     boxShadow: "0 4px 10px rgba(0,0,0,0.2)",
 };
 
-// кастомный линк в меню с тултипом
-const SidebarLink = ({ to, icon: Icon, label, isOpen }) => {
-    const [hover, setHover] = useState(false);
+// компонент ссылки с тултипом и эффектами
+    const SidebarLink = ({ to, icon: Icon, label, isOpen }) => {
+        const [hover, setHover] = useState(false);
+        const [pressed, setPressed] = useState(false);
 
-    return (
-        <Tooltip
-            title={label}
-            placement="right"
-            disableHoverListener={isOpen}
-            slotProps={{
-                tooltip: {
-                    sx: {
-                        fontSize: '14px',
-                        padding: '10px 14px',
-                        backgroundColor: '#DCCFB4',
-                        color: '#323030',
-                        borderRadius: '8px',
+        let transformValue;
+        if (pressed) transformValue = "scale(0.95)";
+        else if (hover) transformValue = "translateY(-2px)";
+
+        return (
+            <Tooltip
+                title={label}
+                placement="right"
+                disableHoverListener={isOpen}
+                disableFocusListener={isOpen}
+                enterDelay={1000}
+                slotProps={{
+                    tooltip: {
+                        sx: {
+                            fontSize: "14px",
+                            padding: "10px 14px",
+                            backgroundColor: "#DCCFB4",
+                            color: "#323030",
+                            borderRadius: "8px",
+                        },
                     },
-                },
-            }}
-        >
-            <Link
-                to={to}
-                style={{
-                    ...menuItemBase,
-                    ...(hover ? hoverStyle : {}),
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
                 }}
-                onMouseEnter={() => setHover(true)}
-                onMouseLeave={() => setHover(false)}
             >
-                <Icon style={{ fontSize: 24, minWidth: 24 }} />
-                <span
+                <Link
+                    to={to}
                     style={{
-                        opacity: isOpen ? 1 : 0,
-                        maxWidth: isOpen ? 200 : 0,
-                        overflow: "hidden",
-                        whiteSpace: "nowrap",
-                        transition: "opacity 0.3s ease, max-width 0.3s ease",
+                        ...menuItemBase,
+                        ...(hover ? hoverStyle : {}),
+                        transform: transformValue,
+                        transition: "transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out",
                     }}
+                    onMouseEnter={() => setHover(true)}
+                    onMouseLeave={() => {
+                        setHover(false);
+                        setPressed(false);
+                    }}
+                    onMouseDown={() => setPressed(true)}
+                    onMouseUp={() => setPressed(false)}
+                    onTouchStart={() => setPressed(true)}
+                    onTouchEnd={() => setPressed(false)}
                 >
-          {label}
-        </span>
-            </Link>
-        </Tooltip>
-    );
-};
+                    <Icon style={{ fontSize: 24, minWidth: 24 }} />
+                    <span
+                        style={{
+                            opacity: isOpen ? 1 : 0,
+                            maxWidth: isOpen ? 200 : 0,
+                            overflow: "hidden",
+                            transition: "opacity 0.3s ease, max-width 0.3s ease",
+                        }}
+                    >
+              {label}
+            </span>
+                </Link>
+            </Tooltip>
+        );
+    };
 
 const Sidebar = ({ isOpen, toggleSidebar }) => {
+    const [budgetOpen, setBudgetOpen] = useState(false);
+    const [budgetHover, setBudgetHover] = useState(false);
+    const [budgetPressed, setBudgetPressed] = useState(false);
+    const [logoutHover, setLogoutHover] = useState(false);
+    const [logoutPressed, setLogoutPressed] = useState(false);
+    let logoutTransform = "";
+    if (logoutPressed) logoutTransform = "scale(0.95)";
+    else if (logoutHover) logoutTransform = "translateY(-2px)";
+
+    const logoutStyle = {
+        ...menuItemBase,
+        marginTop: 30,
+        cursor: "pointer",
+        justifyContent: isOpen ? "flex-start" : "center",
+        transform: logoutTransform,
+        transition: "transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out",
+        ...(logoutHover ? hoverStyle : {}),
+    };
+
     const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        try {
+            await fetch("/api/logout", { method: "POST", credentials: "include" });
+            navigate("/login", { replace: true });
+            window.location.reload();
+        } catch (error) {
+            console.error("Ошибка при выходе:", error);
+        }
+    };
+
 
     const items = [
         { to: "/", icon: HomeIcon, label: "Главная" },
@@ -129,31 +183,48 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         { to: "/raw-materials", icon: CategoryIcon, label: "Сырьё" },
         { to: "/finished-goods", icon: Inventory2Icon, label: "Готовая продукция" },
         { to: "/ingredients", icon: LocalDiningIcon, label: "Ингредиенты" },
-        { to: "/budgets", icon: AccountBalanceWalletIcon, label: "Бюджет" },
         { to: "/productions", icon: FactoryIcon, label: "Производство" },
         { to: "/purchases", icon: ShoppingCartIcon, label: "Закупка" },
-        { to: "/salaries", icon: PaidIcon, label: "Зарплаты" },
-        { to: "/sales", icon: PaidIcon, label: "Продажи" },
     ];
+
+    // рассчитываем анимацию для «Бюджет»
+    let budgetTransform = "";
+    if (budgetPressed) budgetTransform = "scale(0.95)";
+    else if (budgetHover) budgetTransform = "translateY(-2px)";
+
+    const budgetStyle = {
+        ...menuItemBase,
+        justifyContent: "space-between",
+        cursor: "pointer",
+        ...(budgetHover ? hoverStyle : {}),
+        transform: budgetTransform,
+        transition: "transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out",
+    };
 
     return (
         <>
             {/* Бургер-кнопка */}
-            <div style={burgerStyle(isOpen)} onClick={toggleSidebar}>
-                <span style={{ ...barBase, ...(isOpen ? bar1Open : {}) }} />
-                <span style={{ ...barBase, ...(isOpen ? bar2Open : {}) }} />
-                <span style={{ ...barBase, ...(isOpen ? bar3Open : {}) }} />
-            </div>
+            <button
+                type="button"
+                onClick={toggleSidebar}
+                style={{
+                    ...burgerStyle(isOpen),
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    outline: "none",
+                }}
+            >
+                <span style={{...barBase, ...(isOpen ? bar1Open : {})}}/>
+                <span style={{...barBase, ...(isOpen ? bar2Open : {})}}/>
+                <span style={{...barBase, ...(isOpen ? bar3Open : {})}}/>
+            </button>
+
 
             {/* Сайдбар */}
             <div style={sidebarStyle(isOpen)}>
                 {/* Заголовок */}
-                <div
-                    style={{
-                        marginBottom: 20,
-                        paddingLeft: isOpen ? 0 : 12,
-                    }}
-                >
+                <div style={{marginBottom: 20, paddingLeft: isOpen ? 0 : 12}}>
                     <h1
                         style={{
                             fontSize: 24,
@@ -163,8 +234,6 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                             transition: "opacity 0.3s ease",
                             whiteSpace: "nowrap",
                             overflow: "hidden",
-                            pl: 5,
-                            pt:5,
                         }}
                     >
                         Меню
@@ -172,8 +241,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                 </div>
 
                 {/* Ссылки */}
-                <nav style={{ paddingTop: 5 }}>
-                    {items.map(({ to, icon, label }) => (
+                <nav style={{paddingTop: 5}}>
+                    {items.map(({to, icon, label}) => (
                         <SidebarLink
                             key={to}
                             to={to}
@@ -182,6 +251,142 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                             isOpen={isOpen}
                         />
                     ))}
+
+                    {/* Пункт «Бюджет» с тултипом, анимацией и дропдаун-стрелкой */}
+                    <Tooltip
+                        title="Бюджет"
+                        placement="right"
+                        disableHoverListener={isOpen}
+                        disableFocusListener={isOpen}
+                        enterDelay={1000}
+                        slotProps={{
+                            tooltip: {
+                                sx: {
+                                    fontSize: "14px",
+                                    padding: "10px 14px",
+                                    backgroundColor: "#DCCFB4",
+                                    color: "#323030",
+                                    borderRadius: "8px",
+                                },
+                            },
+                        }}
+                    >
+                        <button
+                            type="button"
+                            style={{
+                                ...budgetStyle,
+                                background: "none",
+                                border: "none",
+                                textAlign: "left",
+                                width: "100%",
+                            }}
+                            onClick={() => navigate("/budgets")}
+                            onMouseEnter={() => setBudgetHover(true)}
+                            onMouseLeave={() => {
+                                setBudgetHover(false);
+                                setBudgetPressed(false);
+                            }}
+                            onMouseDown={() => setBudgetPressed(true)}
+                            onMouseUp={() => setBudgetPressed(false)}
+                            onTouchStart={() => setBudgetPressed(true)}
+                            onTouchEnd={() => setBudgetPressed(false)}
+                        >
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <AccountBalanceIcon style={{ fontSize: 24, minWidth: 24 }} />
+                                <span
+                                    style={{
+                                        opacity: isOpen ? 1 : 0,
+                                        maxWidth: isOpen ? 200 : 0,
+                                        overflow: "hidden",
+                                        transition: "opacity 0.3s, max-width 0.3s",
+                                    }}
+                                >
+                Бюджет
+            </span>
+                            </div>
+                            {isOpen &&
+                                (budgetOpen ? (
+                                    <ExpandLessIcon
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setBudgetOpen(false);
+                                        }}
+                                    />
+                                ) : (
+                                    <ExpandMoreIcon
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setBudgetOpen(true);
+                                        }}
+                                    />
+                                ))}
+                        </button>
+                    </Tooltip>
+
+
+                    {/* Подпункты «Зарплаты» и «Продажи» */}
+                    <Collapse in={budgetOpen && isOpen} timeout="auto" unmountOnExit>
+                        <div style={{marginLeft: 32}}>
+                            <SidebarLink
+                                to="/salaries"
+                                icon={AttachMoneyIcon}
+                                label="Зарплаты"
+                                isOpen={isOpen}
+                            />
+                            <SidebarLink
+                                to="/sales"
+                                icon={PointOfSaleIcon}
+                                label="Продажи"
+                                isOpen={isOpen}
+                            />
+                            <SidebarLink
+                                to="/credits"
+                                icon={CreditScoreIcon}
+                                label="Кредиты"
+                                isOpen={isOpen}
+                            />
+                        </div>
+                    </Collapse>
+                    {/* Кнопка "Выйти" */}
+                    <button
+                        type="button"
+                        style={{
+                            ...logoutStyle,
+                            background: "none",
+                            border: "none",
+                            textAlign: "left",
+                            width: "100%",
+                        }}
+                        onClick={handleLogout}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                                handleLogout();
+                            }
+                        }}
+                        onMouseEnter={() => setLogoutHover(true)}
+                        onMouseLeave={() => {
+                            setLogoutHover(false);
+                            setLogoutPressed(false);
+                        }}
+                        onMouseDown={() => setLogoutPressed(true)}
+                        onMouseUp={() => setLogoutPressed(false)}
+                        onTouchStart={() => setLogoutPressed(true)}
+                        onTouchEnd={() => setLogoutPressed(false)}
+                    >
+                        <LogoutIcon style={{fontSize: 24, minWidth: 24}}/>
+                        <span
+                            style={{
+                                opacity: isOpen ? 1 : 0,
+                                maxWidth: isOpen ? 200 : 0,
+                                overflow: "hidden",
+                                transition: "opacity 0.3s ease, max-width 0.3s ease",
+                            }}
+                        >
+                        Выйти
+                        </span>
+                    </button>
+
+
                 </nav>
             </div>
         </>

@@ -4,6 +4,7 @@ import { theme } from '../theme/theme.jsx';
 import SalesCard from '../components/SalesCard';
 import RawMaterialsCard from '../components/RawMaterialsCard';
 import BudgetCard from "../components/BudgetCard.jsx";
+import FinishedGoodsCard from "../components/FinishedGoodsCard.jsx";
 
 const Home = () => {
     return (
@@ -23,6 +24,9 @@ const Home = () => {
                         </Box>
                         <Box sx={{ width: { xs: '100%', sm: 400 } }}>
                             <RawMaterialsCard />
+                        </Box>
+                        <Box sx={{ width: { xs: '100%', sm: 400 } }}>
+                            <FinishedGoodsCard />
                         </Box>
                     </Box>
                 </Box>

@@ -13,66 +13,14 @@ import PlusIcon from "../assets/plus-svgrepo-com.svg";
 import PenIcon from "../assets/pen-svgrepo-com.svg";
 import TrashIcon from "../assets/trash-svgrepo-com.svg";
 import axios from "axios";
+import {
+    inputStyle,
+    selectWhiteStyle,
+    tableHeadCellStyle,
+    tableBodyCellStyle,
+    glassTableStyle,
+} from '../theme/uiStyles.js';
 
-// 🎨 Стили
-const modalStyle = {
-    position: "absolute",
-    top: "50%", left: "50%",
-    transform: "translate(-50%, -50%)",
-    bgcolor: "#1e1e1e",
-    color: "#fff",
-    boxShadow: 24,
-    p: 4,
-    borderRadius: 2,
-    minWidth: 300,
-};
-
-const inputStyle = {
-    input: { color: "#fff" },
-    label: { color: "#fff" },
-    "& .MuiOutlinedInput-root": {
-        "& fieldset": { borderColor: "#555" },
-        "&:hover fieldset": { borderColor: "#fff" },
-        "&.Mui-focused fieldset": { borderColor: "#646cff" },
-        backgroundColor: "#2a2a2a",
-    },
-};
-
-const selectWhiteStyle = {
-    "& label": { color: "#fff" },
-    "& label.Mui-focused": { color: "#646cff" },
-    "& .MuiOutlinedInput-root": {
-        backgroundColor: "none",
-        "& fieldset": { borderColor: "#ccc" },
-        "&:hover fieldset": { borderColor: "#888" },
-        "&.Mui-focused fieldset": { borderColor: "#646cff" },
-        "& .MuiSelect-select": { color: "#fff" },
-        "& .MuiSvgIcon-root": { color: "#fff" },
-    },
-};
-
-const tableHeadCellStyle = {
-    color: "#fff",
-    backgroundColor: "#6F1A07",
-    fontSize: "20px",
-};
-
-const tableBodyCellStyle = {
-    color: "#3d3d3d",
-    fontSize: "20px",
-    backgroundColor: "#B3B6B7",
-};
-
-const glowColorPrimary = "rgba(182,186,241,0.24)";
-const glowColorSecondary = "#646cff1a";
-const glassTableStyle = {
-    backgroundColor: "rgba(0,0,0,0.05)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-    boxShadow: `0 0 20px ${glowColorPrimary}, 0 0 60px ${glowColorSecondary}`,
-    borderRadius: "12px",
-    overflow: "hidden",
-};
 
 export default function FinishedGoodsPage() {
     const [goods, setGoods] = useState([]);
@@ -100,7 +48,12 @@ export default function FinishedGoodsPage() {
         setSnackbarSeverity(sev);
         setSnackbarOpen(true);
     };
-
+    function parseError(err) {
+        const error = err?.response?.data?.error;
+        if (typeof error === "string") return error;
+        if (typeof error === "object") return error.message || JSON.stringify(error);
+        return err.message || "Неизвестная ошибка";
+    }
     useEffect(() => {
         setLoading(true);
         Promise.all([
@@ -111,9 +64,10 @@ export default function FinishedGoodsPage() {
                 setGoods(gRes.data);
                 setUnits(uRes.data);
             })
-            .catch(err => showSnackbar("Ошибка загрузки: " + err.message, "error"))
+            .catch(err => showSnackbar("Ошибка загрузки: " + parseError(err), "error"))
             .finally(() => setLoading(false));
     }, []);
+
 
     const handleChange = e =>
         setForm(f => ({ ...f, [e.target.name]: e.target.value }));
@@ -136,7 +90,7 @@ export default function FinishedGoodsPage() {
                 setCreateOpen(false);
                 showSnackbar("Успешно создано");
             })
-            .catch(err => showSnackbar("Ошибка: " + err.message, "error"))
+            .catch(err => showSnackbar("Ошибка: " + parseError(err), "error"))
             .finally(() => setLoading(false));
     };
 
@@ -154,7 +108,7 @@ export default function FinishedGoodsPage() {
                 setEditOpen(false);
                 showSnackbar("Изменено");
             })
-            .catch(err => showSnackbar("Ошибка: " + err.message, "error"))
+            .catch(err => showSnackbar("Ошибка: " + parseError(err), "error"))
             .finally(() => setLoading(false));
     };
 
@@ -167,7 +121,7 @@ export default function FinishedGoodsPage() {
                 setDeleteOpen(false);
                 showSnackbar("Удалено");
             })
-            .catch(err => showSnackbar("Ошибка: " + err.message, "error"))
+            .catch(err => showSnackbar("Ошибка: " + parseError(err), "error"))
             .finally(() => setLoading(false));
     };
 

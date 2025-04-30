@@ -7,53 +7,27 @@ import {
     TableContainer, Paper, Dialog, DialogTitle,
     DialogContent, DialogActions, Tooltip,
     Snackbar, Alert, CircularProgress,
-    ThemeProvider, createTheme
+    ThemeProvider
 } from "@mui/material";
 import PlusIcon from "../assets/plus-svgrepo-com.svg";
 import PenIcon from "../assets/pen-svgrepo-com.svg";
 import TrashIcon from "../assets/trash-svgrepo-com.svg";
 import { theme } from '../theme/theme.jsx';
-// 🎨 Стили из других страниц
-const modalStyle = {
-    position: "absolute", top: "50%", left: "50%",
-    transform: "translate(-50%, -50%)",
-    bgcolor: "#1e1e1e", color: "#fff",
-    boxShadow: 24, p: 4, borderRadius: 2, minWidth: 300,
-};
+import {
+    inputStyle,
+    tableHeadCellStyle,
+    tableBodyCellStyle,
+    glassTableStyle
+} from '../theme/uiStyles.js';
 
-const inputStyle = {
-    input: { color: "#fff" },
-    label: { color: "#fff" },
-    "& .MuiOutlinedInput-root": {
-        "& fieldset": { borderColor: "#555" },
-        "&:hover fieldset": { borderColor: "#fff" },
-        "&.Mui-focused fieldset": { borderColor: "#646cff" },
-        backgroundColor: "#2a2a2a",
-    },
-};
 
-const tableHeadCellStyle = {
-    color: "#fff",
-    backgroundColor: "#6F1A07",
-    fontSize: "20px",
-};
-
-const tableBodyCellStyle = {
-    color: "#3d3d3d",
-    fontSize: "20px",
-    backgroundColor: "#B3B6B7",
-};
-
-const glowColorPrimary = "rgba(182,186,241,0.24)";
-const glowColorSecondary = "#646cff1a";
-const glassTableStyle = {
-    backgroundColor: "rgba(0,0,0,0.05)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-    boxShadow: `0 0 20px ${glowColorPrimary}, 0 0 60px ${glowColorSecondary}`,
-    borderRadius: "12px",
-    overflow: "hidden",
-};
+function parseError(err) {
+    const error = err.response?.data?.error;
+    return {
+        code: typeof error === "object" ? error.code : null,
+        message: typeof error === "string" ? error : error?.message || err.message,
+    };
+}
 
 
 export default function UnitsPage() {
@@ -112,7 +86,8 @@ export default function UnitsPage() {
             setCreateOpen(false);
             await loadUnits();
         } catch (err) {
-            showSnackbar("Ошибка: " + (err.response?.data?.error || err.message), "error");
+             const { code, message } = parseError(err);
+             showSnackbar("Ошибка: " + message, "error");
         } finally {
             setLoading(false);
         }
@@ -130,7 +105,8 @@ export default function UnitsPage() {
             setEditOpen(false);
             await loadUnits();
         } catch (err) {
-            showSnackbar("Ошибка: " + (err.response?.data?.error || err.message), "error");
+             const { code, message } = parseError(err);
+             showSnackbar("Ошибка: " + message, "error");
         } finally {
             setLoading(false);
         }
@@ -144,7 +120,8 @@ export default function UnitsPage() {
             setDeleteOpen(false);
             await loadUnits();
         } catch (err) {
-            showSnackbar("Ошибка: " + (err.response?.data?.error || err.message), "error");
+             const { code, message } = parseError(err);
+             showSnackbar("Ошибка: " + message, "error");
         } finally {
             setLoading(false);
         }

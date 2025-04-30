@@ -2,12 +2,21 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"net/http"
 	"time"
 	"zavod/models"
+	"zavod/utils"
+)
+
+var (
+	ErrNoIngredients       = errors.New("no ingredients found for product")
+	ErrNotEnoughRaw        = errors.New("not enough raw material")
+	ErrZeroRawQuantity     = errors.New("zero quantity for raw material")
+	ErrProductNotFound     = errors.New("product not found")
+	ErrSaveProduction      = errors.New("failed to record production")
+	ErrUpdateFinishedGoods = errors.New("failed to update finished goods")
 )
 
 func ProduceNewFinishedGood(c *gin.Context, db *gorm.DB) {
@@ -19,96 +28,105 @@ func ProduceNewFinishedGood(c *gin.Context, db *gorm.DB) {
 
 	var req ProduceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.BadRequest(c, "Неверные входные данные")
 		return
 	}
 
 	err := db.Transaction(func(tx *gorm.DB) error {
-		// 1. Получить ингредиенты
 		ingredients, err := getIngredientsForProduct(tx, req.ProductID)
 		if err != nil {
 			return err
 		}
 
-		// 2. Проверить доступность сырья
 		if err := checkIngredientsAvailability(ingredients, req.Quantity); err != nil {
 			return err
 		}
 
-		// 3. Обновить сырьё и получить стоимость
 		totalCost, err := updateRawMaterials(tx, ingredients, req.Quantity)
 		if err != nil {
 			return err
 		}
 
-		// 4. Обновить готовую продукцию с использованием общей стоимости
 		if err := updateFinishedGood(tx, req.ProductID, req.Quantity, totalCost); err != nil {
-			return err
+			return ErrUpdateFinishedGoods
 		}
 
-		// 5. Записать факт производства
 		if err := recordProduction(tx, req.ProductID, req.Quantity, req.EmployeeID); err != nil {
-			return err
+			return ErrSaveProduction
 		}
 
 		return nil
 	})
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		switch {
+		case errors.Is(err, ErrNoIngredients):
+			utils.RespondError(c, 400, "ERR_NO_INGREDIENTS", "У продукта нет ингредиентов")
+		case errors.Is(err, ErrNotEnoughRaw):
+			utils.RespondError(c, 400, "ERR_RAW_SHORTAGE", "Недостаточно сырья для производства")
+		case errors.Is(err, ErrZeroRawQuantity):
+			utils.RespondError(c, 400, "ERR_RAW_ZERO", "Сырьё с нулевым количеством не может быть использовано")
+		case errors.Is(err, ErrProductNotFound):
+			utils.RespondError(c, 404, "ERR_PRODUCT_NOT_FOUND", "Продукт не найден")
+		case errors.Is(err, ErrSaveProduction):
+			utils.InternalError(c, "Ошибка при записи производства")
+		case errors.Is(err, ErrUpdateFinishedGoods):
+			utils.InternalError(c, "Ошибка при обновлении готовой продукции")
+		default:
+			utils.InternalError(c, "Неизвестная ошибка при производстве")
+		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "production successful"})
+	c.JSON(http.StatusOK, gin.H{"status": "Производство успешно завершено"})
 }
 
-// Вынесение получения ингредиентов для продукта
+// Получение ингредиентов
 func getIngredientsForProduct(tx *gorm.DB, productID uint) ([]models.Ingredient, error) {
 	var ingredients []models.Ingredient
 	if err := tx.Preload("RawMaterial").
 		Where("product_id = ?", productID).
 		Find(&ingredients).Error; err != nil {
-		return nil, err
+		return nil, ErrProductNotFound
 	}
-
 	if len(ingredients) == 0 {
-		return nil, errors.New("no ingredients found for the product")
+		return nil, ErrNoIngredients
 	}
-
 	return ingredients, nil
 }
 
-// Вынесение проверки доступности ингредиентов
+// Проверка доступности сырья
 func checkIngredientsAvailability(ingredients []models.Ingredient, quantity float64) error {
 	for _, ing := range ingredients {
-		requiredQty := ing.Quantity * quantity
-		if ing.RawMaterial.Quantity < requiredQty {
-			return fmt.Errorf("not enough raw material: %s", ing.RawMaterial.Name)
+		required := ing.Quantity * quantity
+		if ing.RawMaterial.Quantity < required {
+			return ErrNotEnoughRaw
 		}
 	}
 	return nil
 }
 
-// Вынесение обновления количества и стоимости сырья
+// Обновление количества и стоимости сырья
 func updateRawMaterials(tx *gorm.DB, ingredients []models.Ingredient, quantity float64) (float64, error) {
 	var totalCost float64
 
 	for _, ing := range ingredients {
-		requiredQty := ing.Quantity * quantity
-		rawMaterial := ing.RawMaterial
+		required := ing.Quantity * quantity
+		raw := ing.RawMaterial
 
-		if rawMaterial.Quantity == 0 {
-			return 0, fmt.Errorf("у сырья ID %d нулевая масса — невозможно рассчитать стоимость", rawMaterial.ID)
+		if raw.Quantity == 0 {
+			return 0, ErrZeroRawQuantity
 		}
 
-		unitCost := rawMaterial.TotalAmount / rawMaterial.Quantity
-		costToDeduct := unitCost * requiredQty
+		unitCost := raw.TotalAmount / raw.Quantity
+		costToDeduct := unitCost * required
+
 		totalCost += costToDeduct
 
 		if err := tx.Model(&models.RawMaterial{}).
-			Where("id = ?", rawMaterial.ID).
+			Where("id = ?", raw.ID).
 			Updates(map[string]interface{}{
-				"quantity":     gorm.Expr("quantity - ?", requiredQty),
+				"quantity":     gorm.Expr("quantity - ?", required),
 				"total_amount": gorm.Expr("total_amount - ?", costToDeduct),
 			}).Error; err != nil {
 			return 0, err
@@ -118,11 +136,11 @@ func updateRawMaterials(tx *gorm.DB, ingredients []models.Ingredient, quantity f
 	return totalCost, nil
 }
 
-// Вынесение обновления finished goods
+// Обновление готовой продукции
 func updateFinishedGood(tx *gorm.DB, productID uint, quantity, totalCost float64) error {
 	var product models.FinishedGood
 	if err := tx.First(&product, productID).Error; err != nil {
-		return err
+		return ErrProductNotFound
 	}
 
 	if err := tx.Model(&models.FinishedGood{}).
@@ -137,46 +155,26 @@ func updateFinishedGood(tx *gorm.DB, productID uint, quantity, totalCost float64
 	return nil
 }
 
-// Вынесение записи о производстве
+// Запись факта производства
 func recordProduction(tx *gorm.DB, productID uint, quantity float64, employeeID uint) error {
-	production := models.ProductProduction{
+	entry := models.ProductProduction{
 		ProductID:      productID,
 		Quantity:       quantity,
 		ProductionDate: time.Now(),
 		EmployeeID:     employeeID,
 	}
-
-	if err := tx.Create(&production).Error; err != nil {
+	if err := tx.Create(&entry).Error; err != nil {
 		return err
 	}
-
 	return nil
-}
-
-func ListProductProductions(c *gin.Context, db *gorm.DB) {
-	var productions []models.ProductProduction
-	var products []models.FinishedGood
-	var employees []models.Employee
-
-	db.Preload("Product").Preload("Employee").Order("production_date DESC").Find(&productions)
-	db.Find(&products)
-	db.Find(&employees)
-
-	c.HTML(http.StatusOK, "produce.html", gin.H{
-		"productions": productions,
-		"products":    products,
-		"employees":   employees,
-	})
 }
 
 func GetProductionHistory(c *gin.Context, db *gorm.DB) {
 	var productions []models.ProductProduction
-
-	err := db.Preload("Product").Preload("Employee").Order("production_date DESC").Find(&productions).Error
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка загрузки истории"})
+	if err := db.Preload("Product").Preload("Employee").
+		Order("production_date DESC").Find(&productions).Error; err != nil {
+		utils.InternalError(c, "Ошибка загрузки истории")
 		return
 	}
-
 	c.JSON(http.StatusOK, productions)
 }

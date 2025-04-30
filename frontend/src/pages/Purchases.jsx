@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box, Button, TextField, MenuItem, Select, InputLabel, FormControl,
-    Container, Typography, Table, TableHead, TableRow, TableCell,
+    Typography, Table, TableHead, TableRow, TableCell,
     TableBody, TableContainer, Paper, CircularProgress, Modal,
     Tooltip, Snackbar, Alert, ThemeProvider
 } from '@mui/material';
@@ -10,65 +10,16 @@ import { theme } from '../theme/theme.jsx';
 
 import PlusIcon from '../assets/plus-svgrepo-com.svg';
 import TrashIcon from "../assets/trash-svgrepo-com.svg";
+import {
+    inputStyle,
+    selectWhiteStyle,
+    tableHeadCellStyle,
+    tableBodyCellStyle,
+    glassTableStyle,
+    modalStyle,
+} from '../theme/uiStyles.js';
 
-// 🎨 Стили (точь-в-точь как в ProductionPage.jsx)
-const modalStyle = {
-    position: 'absolute',
-    top: '50%', left: '50%',
-    transform: 'translate(-50%, -50%)',
-    bgcolor: '#1e1e1e',
-    color: '#fff',
-    boxShadow: 24,
-    p: 4,
-    borderRadius: 2,
-    minWidth: 300,
-};
 
-const inputStyle = {
-    input: { color: '#fff' },
-    label: { color: '#fff' },
-    '& .MuiOutlinedInput-root': {
-        '& fieldset': { borderColor: '#555' },
-        '&:hover fieldset': { borderColor: '#fff' },
-        '&.Mui-focused fieldset': { borderColor: '#646cff' },
-        backgroundColor: '#2a2a2a',
-        '& .MuiSelect-select': { color: '#fff' },
-    },
-};
-
-const selectWhiteStyle = {
-    '& label': { color: '#fff' },
-    '& label.Mui-focused': { color: '#646cff' },
-    '& .MuiOutlinedInput-root': {
-        backgroundColor: 'none',
-        '& fieldset': { borderColor: '#ccc' },
-        '&:hover fieldset': { borderColor: '#888' },
-        '&.Mui-focused fieldset': { borderColor: '#646cff' },
-        '& .MuiSelect-select': { color: '#fdfdfd' },
-        '& .MuiSvgIcon-root': { color: '#fff' },
-    },
-};
-
-const tableHeadCellStyle = {
-    color: '#fff',
-    backgroundColor: '#6F1A07',
-    fontSize: '20px',
-};
-const tableBodyCellStyle = {
-    color: '#3d3d3d',
-    fontSize: '20px',
-    backgroundColor: '#B3B6B7',
-};
-const glowColorPrimary = 'rgba(182,186,241,0.24)';
-const glowColorSecondary = '#646cff1a';
-const glassBorderColor = 'rgba(87,71,71,0.59)';
-const glassTableStyle = {
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
-    boxShadow: `0 0 20px ${glowColorPrimary}, 0 0 60px ${glowColorSecondary}`,
-    borderRadius: '12px', border: `1px solid ${glassBorderColor}`,
-    overflow: 'hidden',
-};
 
 export default function Purchases() {
     const [form, setForm] = useState({
@@ -96,6 +47,13 @@ export default function Purchases() {
         setSnackbarOpen(true);
     };
 
+    // 🔧 Утилита для парсинга ошибок (вставь выше useEffect или в начало компонента)
+    function parseError(error) {
+        if (typeof error === "string") return error;
+        if (typeof error === "object") return error.message || JSON.stringify(error);
+        return "Неизвестная ошибка";
+    }
+
     useEffect(() => {
         loadData();
     }, []);
@@ -112,7 +70,6 @@ export default function Purchases() {
                 rmRes.json(), empRes.json(), pRes.json(),
             ]);
 
-            // Логирование данных в консоль
             console.log('Сырьё:', rmData);
             console.log('Сотрудники:', empData);
             console.log('Закупки:', pData);
@@ -121,8 +78,9 @@ export default function Purchases() {
             setEmployees(empData);
             setPurchases(pData);
         } catch (err) {
+            const msg = parseError(err);
             console.error('Ошибка при загрузке данных:', err);
-            showSnackbar('Ошибка загрузки данных: ' + err.message, 'error');
+            showSnackbar('Ошибка загрузки данных: ' + msg, 'error');
         } finally {
             setLoading(false);
         }
@@ -155,11 +113,12 @@ export default function Purchases() {
                 setForm({ raw_material_id: '', quantity: '', total_amount: '', employee_id: '' });
                 await loadData();
             } else {
-                const errMsg = result?.error || text || 'Неизвестная ошибка';
+                const errMsg = parseError(result?.error || text);
                 showSnackbar('Ошибка: ' + errMsg, 'error');
             }
         } catch (err) {
-            showSnackbar('Ошибка: ' + err.message, 'error');
+            const msg = parseError(err);
+            showSnackbar('Ошибка: ' + msg, 'error');
         } finally {
             setLoading(false);
         }
@@ -169,24 +128,28 @@ export default function Purchases() {
         setCurrentDeleteId(id);
         setDeleteOpen(true);
     };
+
     const handleDelete = async () => {
         setLoading(true);
         try {
             const res = await fetch(`/api/purchases/delete/${currentDeleteId}`, { method: 'DELETE' });
             const data = await res.json();
-            if (data.message === 'Закупка удалена') {
+            if (res.ok && data.message === 'Закупка удалена') {
                 showSnackbar('Закупка отменена', 'success');
                 setDeleteOpen(false);
                 await loadData();
             } else {
-                showSnackbar('Ошибка при отмене закупки', 'error');
+                const msg = parseError(data?.error || data?.message);
+                showSnackbar('Ошибка при отмене закупки: ' + msg, 'error');
             }
         } catch (err) {
-            showSnackbar('Ошибка: ' + err.message, 'error');
+            const msg = parseError(err);
+            showSnackbar('Ошибка: ' + msg, 'error');
         } finally {
             setLoading(false);
         }
     };
+
 
     return (
         <ThemeProvider theme={theme}>

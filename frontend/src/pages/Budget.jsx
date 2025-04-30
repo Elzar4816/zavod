@@ -3,53 +3,21 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { theme } from '../theme/theme.jsx';
 import {
-    Box, Button, TextField, MenuItem, Typography,
+    Box, Button, TextField, Typography,
     Table, TableHead, TableRow, TableCell, TableBody,
     TableContainer, Paper, Dialog, DialogTitle,
     DialogContent, DialogActions, Tooltip,
     Snackbar, Alert, CircularProgress,
-    ThemeProvider, createTheme
+    ThemeProvider
 } from "@mui/material";
 import PlusIcon from "../assets/plus-svgrepo-com.svg";
 import PenIcon from "../assets/pen-svgrepo-com.svg";
-
-// 🎨 Стили как в ProductionPage
-const modalStyle = {
-    position: "absolute", top: "50%", left: "50%",
-    transform: "translate(-50%, -50%)",
-    bgcolor: "#1e1e1e", color: "#fff",
-    boxShadow: 24, p: 4, borderRadius: 2, minWidth: 300,
-};
-
-const inputStyle = {
-    input: { color: "#fff" },
-    label: { color: "#fff" },
-    "& .MuiOutlinedInput-root": {
-        "& fieldset": { borderColor: "#555" },
-        "&:hover fieldset": { borderColor: "#fff" },
-        "&.Mui-focused fieldset": { borderColor: "#646cff" },
-        backgroundColor: "#2a2a2a",
-    },
-};
-
-const tableHeadCellStyle = {
-    color: "#fff", backgroundColor: "#6F1A07", fontSize: "20px"
-};
-
-const tableBodyCellStyle = {
-    color: "#3d3d3d", fontSize: "20px", backgroundColor: "#B3B6B7"
-};
-
-const glowColorPrimary = "rgba(182,186,241,0.24)";
-const glowColorSecondary = "#646cff1a";
-const glassTableStyle = {
-    backgroundColor: "rgba(0,0,0,0.05)",
-    backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-    boxShadow: `0 0 20px ${glowColorPrimary}, 0 0 60px ${glowColorSecondary}`,
-    borderRadius: "12px", overflow: "hidden"
-};
-
-
+import {
+    inputStyle,
+    tableHeadCellStyle,
+    tableBodyCellStyle,
+    glassTableStyle,
+} from '../theme/uiStyles.js';
 
 export default function BudgetPage() {
     const [items, setItems] = useState([]);
@@ -70,6 +38,13 @@ export default function BudgetPage() {
         setSnackbarOpen(true);
     };
 
+    function parseError(err) {
+        const error = err?.response?.data?.error;
+        if (typeof error === "string") return error;
+        if (typeof error === "object") return error.message || JSON.stringify(error);
+        return err.message || "Неизвестная ошибка";
+    }
+
     useEffect(() => {
         loadBudget();
     }, []);
@@ -80,8 +55,9 @@ export default function BudgetPage() {
             await axios.get("/api/check-budget");
             const res = await axios.get("/api/budgets");
             setItems(res.data);
-        } catch {
+        } catch (err) {
             setItems([]);
+            showSnackbar("Ошибка загрузки: " + parseError(err), "error");
         } finally {
             setLoading(false);
         }
@@ -108,10 +84,10 @@ export default function BudgetPage() {
             await axios.post("/api/budget/create", payload);
             showSnackbar("Добавлено");
             setCreateOpen(false);
-            setForm({ total_amount:"", markup_percentage:"", bonus_percentage:"", id:null });
+            setForm({ total_amount: "", markup_percentage: "", bonus_percentage: "", id: null });
             await loadBudget();
         } catch (err) {
-            showSnackbar("Ошибка: " + err.message, "error");
+            showSnackbar("Ошибка: " + parseError(err), "error");
         } finally {
             setLoading(false);
         }
@@ -143,17 +119,17 @@ export default function BudgetPage() {
             const res = await axios.put(`/api/budget/update/${id}`, payload);
             showSnackbar("Сохранено");
             setEditOpen(false);
-            setForm({ total_amount:"", markup_percentage:"", bonus_percentage:"", id:null });
-            // сразу подмени front-end
+            setForm({ total_amount: "", markup_percentage: "", bonus_percentage: "", id: null });
             setItems(it =>
                 it.map(i => (i.id === id ? { ...i, ...res.data } : i))
             );
         } catch (err) {
-            showSnackbar("Ошибка: " + err.message, "error");
+            showSnackbar("Ошибка: " + parseError(err), "error");
         } finally {
             setLoading(false);
         }
     };
+
 
     return (
         <ThemeProvider theme={theme}>
