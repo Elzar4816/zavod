@@ -1,7 +1,4 @@
-// src/pages/IngredientsPage.jsx
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { theme } from '../theme/theme.jsx';
 import {
     Box, Button, TextField, MenuItem, Typography,
     Dialog, DialogTitle, DialogContent, DialogActions,
@@ -9,19 +6,17 @@ import {
     TableContainer, Paper, Tooltip, Snackbar, Alert,
     CircularProgress, ThemeProvider
 } from "@mui/material";
-import PenIcon from "../assets/pen-svgrepo-com.svg";
-import TrashIcon from "../assets/trash-svgrepo-com.svg";
-import PlusIcon from "../assets/plus-svgrepo-com.svg";
+import PenIcon from "@assets/pen-svgrepo-com.svg";
+import TrashIcon from "@assets/trash-svgrepo-com.svg";
+import PlusIcon from "@assets/plus-svgrepo-com.svg";
+import { theme } from '@theme/theme.jsx';
 import {
-    inputStyle,
-    selectWhiteStyle,
-    tableHeadCellStyle,
-    tableBodyCellStyle,
-    glassTableStyle,
-    selectWhiteStyleForDropper,
-    modalStyle
-} from '../theme/uiStyles.js';
-
+    inputStyle, selectWhiteStyle, tableHeadCellStyle, tableBodyCellStyle,
+    glassTableStyle, selectWhiteStyleForDropper, modalStyle
+} from '@theme/uiStyles.js';
+import { useApi } from '@hooks/useApi';
+import { useNotifier } from '@hooks/useNotifier';
+import { useFormWithLoading } from '@hooks/useFormWithLoading';
 
 export default function IngredientsPage() {
     const [ingredients, setIngredients] = useState([]);
@@ -30,59 +25,38 @@ export default function IngredientsPage() {
     const [selectedProduct, setSelectedProduct] = useState("");
     const [availableMaterials, setAvailableMaterials] = useState([]);
 
-    const [form, setForm] = useState({
-        product_id: "", raw_material_id: "", quantity: ""
-    });
+    const [form, setForm] = useState({ product_id: "", raw_material_id: "", quantity: "" });
     const [createOpen, setCreateOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [currentEdit, setCurrentEdit] = useState(null);
 
-    const [loading, setLoading] = useState(false);
-    const [snackbarOpen, setSnackbarOpen] = useState(false);
-    const [snackbarMsg, setSnackbarMsg] = useState("");
-    const [snackbarSeverity, setSnackbarSeverity] = useState("success");
+    const api = useApi();
+    const { show, snackbarProps, alertProps } = useNotifier();
+    const { loading, wrap } = useFormWithLoading();
 
-    const showSnackbar = (msg, sev = "success") => {
-        setSnackbarMsg(msg);
-        setSnackbarSeverity(sev);
-        setSnackbarOpen(true);
-    };
-    function parseError(err) {
-        const error = err?.response?.data?.error;
-        if (typeof error === "string") return error;
-        if (typeof error === "object") return error.message || JSON.stringify(error);
-        return err.message || "Неизвестная ошибка";
-    }
-
-    // Загрузка данных
     useEffect(() => {
-        setLoading(true);
-        axios.get("/api/ingredients")
-            .then(r => {
-                const { finishedGoods, ingredients, rawMaterials } = r.data;
-                setProducts(finishedGoods);
-                setIngredients(ingredients);
-                setRawMaterials(rawMaterials);
-                if (finishedGoods.length) {
-                    setSelectedProduct(finishedGoods[0].id);
-                    setForm(f => ({ ...f, product_id: finishedGoods[0].id }));
-                }
-            })
-            .catch(e => showSnackbar("Ошибка загрузки: " + parseError(e), "error"))
-            .finally(() => setLoading(false));
+        loadData();
     }, []);
 
+    const loadData = async () => {
+        await wrap(async () => {
+            const data = await api.get("/api/ingredients");
+            setProducts(data.finishedGoods);
+            setIngredients(data.ingredients);
+            setRawMaterials(data.rawMaterials);
+            if (data.finishedGoods.length) {
+                const firstId = data.finishedGoods[0].id;
+                setSelectedProduct(firstId);
+                setForm(f => ({ ...f, product_id: firstId }));
+            }
+        });
+    };
 
-    // Смена продукта
     useEffect(() => {
         setForm(f => ({ ...f, product_id: selectedProduct }));
-        const used = ingredients
-            .filter(i => i.product_id === selectedProduct)
-            .map(i => i.raw_material_id);
-        setAvailableMaterials(
-            rawMaterials.filter(rm => !used.includes(rm.id))
-        );
+        const used = ingredients.filter(i => i.product_id === selectedProduct).map(i => i.raw_material_id);
+        setAvailableMaterials(rawMaterials.filter(rm => !used.includes(rm.id)));
     }, [selectedProduct, ingredients, rawMaterials]);
 
     const handleFormChange = e => {
@@ -90,72 +64,50 @@ export default function IngredientsPage() {
         setForm(f => ({ ...f, [name]: value }));
     };
 
-    // Создать
     const handleCreate = async () => {
         if (!form.raw_material_id || !form.quantity) {
-            return showSnackbar("Заполните все поля", "error");
+            show("Заполните все поля", "error");
+            return;
         }
-        setLoading(true);
-        try {
-            await axios.post("/api/ingredient/create", {
+        await wrap(async () => {
+            await api.post("/api/ingredient/create", {
                 product_id: +form.product_id,
                 raw_material_id: +form.raw_material_id,
                 quantity: +form.quantity,
             });
-            const r = await axios.get("/api/ingredients");
-            setIngredients(r.data.ingredients);
-            setRawMaterials(r.data.rawMaterials);
-            setProducts(r.data.finishedGoods);
-            setForm(f => ({ ...f, raw_material_id: "", quantity: "" }));
+            show("Ингредиент добавлен");
             setCreateOpen(false);
-            showSnackbar("Ингредиент добавлен");
-        } catch (e) {
-            showSnackbar("Ошибка: " + parseError(e), "error");
-        } finally {
-            setLoading(false);
-        }
+            setForm(f => ({ ...f, raw_material_id: "", quantity: "" }));
+            await loadData();
+        });
     };
 
-    // Сохранить редактирование
-    const handleEditSave = () => {
-        setLoading(true);
-        axios.put(`/api/ingredient/update/${currentEdit.id}`, {
-            quantity: +currentEdit.quantity
-        })
-            .then(r => {
-                setIngredients(prev =>
-                    prev.map(i => i.id === r.data.id ? r.data : i)
-                );
-                setEditOpen(false);
-                showSnackbar("Изменено");
-            })
-            .catch(e => showSnackbar("Ошибка: " + parseError(e), "error"))
-            .finally(() => setLoading(false));
+    const handleEditSave = async () => {
+        await wrap(async () => {
+            await api.put(`/api/ingredient/update/${currentEdit.id}`, {
+                quantity: +currentEdit.quantity
+            });
+            show("Изменено");
+            setEditOpen(false);
+            await loadData();
+        });
     };
 
-    // Удалить
-    const handleDelete = () => {
-        setLoading(true);
-        axios.delete(`/api/ingredient/delete/${currentEdit.id}`)
-            .then(() => {
-                setIngredients(prev =>
-                    prev.filter(i => i.id !== currentEdit.id)
-                );
-                setDeleteOpen(false);
-                showSnackbar("Удалено");
-            })
-            .catch(e => showSnackbar("Ошибка: " + parseError(e), "error"))
-            .finally(() => setLoading(false));
+    const handleDelete = async () => {
+        await wrap(async () => {
+            await api.del(`/api/ingredient/delete/${currentEdit.id}`);
+            show("Удалено");
+            setDeleteOpen(false);
+            await loadData();
+        });
     };
 
     return (
         <ThemeProvider theme={theme}>
-            <Box sx={{ color: "#fff",pt:5,pl:5 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between',alignItems:'center', mb: 2   }}>
+            <Box sx={{ color: "#fff", pt: 5, pl: 5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Typography variant="h4" color="#000">Ингредиенты</Typography>
-
                 </Box>
-
 
                 {/* Фильтр по продукту */}
                 <Box sx={{ display: "flex", alignItems: "center", mb: 2, gap: 2 }}>
@@ -169,41 +121,22 @@ export default function IngredientsPage() {
                             <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
                         ))}
                     </TextField>
-                    <Box sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        mb: 2
-                    }}>
-
-                        <Tooltip
-                            title={
-                                availableMaterials.length === 0
-                                    ? "Все возможные ингредиенты уже добавлены"
-                                    : "Добавить ингредиент"
-                            }
-                            placement="right"
-                            slotProps={{
-                                tooltip: {
-                                    sx: {
-                                        fontSize: 14, p: "10px 14px", bgcolor: "#2a2a2a",
-                                        color: "#fff", border: "1px solid #646cff", borderRadius: 1
-                                    }
-                                }
-                            }}
-                        >
-            <span>
-              <Button
-                  variant="contained"
-                  onClick={() => setCreateOpen(true)}
-                  disabled={availableMaterials.length === 0}
-                  sx={{ p: 1, minWidth: 40, borderRadius: 1 }}
-              >
-                <img src={PlusIcon} alt="Добавить" width={24} height={24} />
-              </Button>
-            </span>
-                        </Tooltip>
-                    </Box>
+                    <Tooltip
+                        title={availableMaterials.length === 0 ? "Все ингредиенты добавлены" : "Добавить ингредиент"}
+                        placement="right"
+                        slotProps={{ tooltip: { sx: { fontSize: 14, p: "10px 14px", bgcolor: "#2a2a2a", color: "#fff", border: "1px solid #646cff", borderRadius: 1 } } }}
+                    >
+                        <span>
+                            <Button
+                                variant="contained"
+                                onClick={() => setCreateOpen(true)}
+                                disabled={availableMaterials.length === 0}
+                                sx={{ p: 1, minWidth: 40, borderRadius: 1 }}
+                            >
+                                <img src={PlusIcon} alt="Добавить" width={24} height={24} />
+                            </Button>
+                        </span>
+                    </Tooltip>
                 </Box>
 
                 {/* Таблица */}
@@ -217,49 +150,58 @@ export default function IngredientsPage() {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {ingredients.filter(i => i.product_id === selectedProduct)
-                                .map(i => (
-                                    <TableRow key={i.id}>
-                                        <TableCell sx={tableBodyCellStyle}>
-                                            {i.raw_material.name}
-                                        </TableCell>
-                                        <TableCell sx={tableBodyCellStyle}>{i.quantity}</TableCell>
-                                        <TableCell sx={tableBodyCellStyle}>
-                                            <Tooltip title="Редактировать" placement="top"
-                                                     slotProps={{ tooltip: { sx: { fontSize: 14, p: "10px 14px", bgcolor: "#2a2a2a", color: "#fff", border: "1px solid #646cff", borderRadius: 1 } } }}
+                            {ingredients.filter(i => i.product_id === selectedProduct).map(i => (
+                                <TableRow key={i.id}>
+                                    <TableCell sx={tableBodyCellStyle}>{i.raw_material.name}</TableCell>
+                                    <TableCell sx={tableBodyCellStyle}>{i.quantity}</TableCell>
+                                    <TableCell sx={tableBodyCellStyle}>
+                                        <Tooltip title="Редактировать" placement="top" slotProps={{
+                                            tooltip: {
+                                                sx: {
+                                                    fontSize: 14,
+                                                    p: "10px 14px",
+                                                    bgcolor: "#2a2a2a",
+                                                    color: "#fff",
+                                                    border: "1px solid #646cff",
+                                                    borderRadius: 1
+                                                }
+                                            }
+                                        }}>
+                                            <Button
+                                                variant="text" size="small" sx={{ minWidth: 0, mr: 1 }}
+                                                onClick={() => {
+                                                    setCurrentEdit({ id: i.id, quantity: i.quantity.toString() });
+                                                    setEditOpen(true);
+                                                }}
                                             >
-                                                <Button
-                                                    variant="text" size="small"
-                                                    sx={{ minWidth: 0, mr: 1 }}
-                                                    onClick={() => {
-                                                        setCurrentEdit({
-                                                            id: i.id,
-                                                            quantity: i.quantity.toString()
-                                                        });
-                                                        setEditOpen(true);
-                                                    }}
-                                                >
-                                                    <img src={PenIcon} alt="Ред." width={20} height={20} />
-                                                </Button>
-                                            </Tooltip>
-                                            <Tooltip title="Удалить" placement="top"
-                                                     slotProps={{ tooltip: { sx: { fontSize: 14, p: "10px 14px", bgcolor: "#2a2a2a", color: "#fff", border: "1px solid #646cff", borderRadius: 1 } } }}
+                                                <img src={PenIcon} alt="Ред." width={20} height={20} />
+                                            </Button>
+                                        </Tooltip>
+                                        <Tooltip title="Удалить" placement="top" slotProps={{
+                                            tooltip: {
+                                                sx: {
+                                                    fontSize: 14,
+                                                    p: "10px 14px",
+                                                    bgcolor: "#2a2a2a",
+                                                    color: "#fff",
+                                                    border: "1px solid #646cff",
+                                                    borderRadius: 1
+                                                }
+                                            }
+                                        }}>
+                                            <Button
+                                                variant="text" size="small" color="error" sx={{ minWidth: 0 }}
+                                                onClick={() => {
+                                                    setCurrentEdit(i);
+                                                    setDeleteOpen(true);
+                                                }}
                                             >
-                                                <Button
-                                                    variant="text" size="small" color="error"
-                                                    sx={{ minWidth: 0 }}
-                                                    onClick={() => {
-                                                        setCurrentEdit(i);
-                                                        setDeleteOpen(true);
-                                                    }}
-                                                >
-                                                    <img src={TrashIcon} alt="Del" width={20} height={20} />
-                                                </Button>
-                                            </Tooltip>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            }
+                                                <img src={TrashIcon} alt="Del" width={20} height={20} />
+                                            </Button>
+                                        </Tooltip>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
                         </TableBody>
                     </Table>
                 </TableContainer>
@@ -267,7 +209,7 @@ export default function IngredientsPage() {
                 {/* CREATE */}
                 <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="sm">
                     <DialogTitle sx={modalStyle}>Добавить ингредиент</DialogTitle>
-                    <DialogContent sx={{ bgcolor: "#1e1e1e", color: "#fff" }}>
+                    <DialogContent sx={{ bgcolor: "#1e1e1e" }}>
                         <TextField
                             select fullWidth margin="dense" label="Сырьё"
                             name="raw_material_id"
@@ -298,8 +240,7 @@ export default function IngredientsPage() {
                 {/* EDIT */}
                 <Dialog open={editOpen} onClose={() => setEditOpen(false)} fullWidth maxWidth="sm">
                     <DialogTitle sx={{ bgcolor: "#1e1e1e", color: "#fff" }}>Редактировать количество</DialogTitle>
-
-                    <DialogContent sx={{ bgcolor: "#1e1e1e", color: "#fff" }}>
+                    <DialogContent sx={{ bgcolor: "#1e1e1e" }}>
                         <TextField
                             fullWidth margin="dense" label="Количество" type="number"
                             value={currentEdit?.quantity || ""}
@@ -318,7 +259,6 @@ export default function IngredientsPage() {
                 {/* DELETE */}
                 <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} fullWidth maxWidth="xs">
                     <DialogTitle sx={{ bgcolor: "#1e1e1e", color: "#fff" }}>Удалить запись?</DialogTitle>
-
                     <DialogActions sx={{ bgcolor: "#1e1e1e" }}>
                         <Button color="error" onClick={handleDelete} disabled={loading}>
                             {loading ? <CircularProgress size={24} /> : "Удалить"}
@@ -328,14 +268,9 @@ export default function IngredientsPage() {
                 </Dialog>
 
                 {/* SNACKBAR */}
-                <Snackbar
-                    open={snackbarOpen}
-                    autoHideDuration={6000}
-                    onClose={() => setSnackbarOpen(false)}
-                    anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-                >
-                    <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: "100%" }}>
-                        {snackbarMsg}
+                <Snackbar {...snackbarProps}>
+                    <Alert {...alertProps} onClose={snackbarProps.onClose}>
+                        {alertProps.children}
                     </Alert>
                 </Snackbar>
             </Box>

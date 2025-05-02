@@ -18,137 +18,121 @@ import {
     glassTableStyle,
     modalStyle,
 } from '../theme/uiStyles.js';
+import { useApi } from '../hooks/useApi';
+import { useNotifier } from '../hooks/useNotifier';
+import { usePurchasesData } from '../hooks/usePurchasesData';
+import { useFormWithLoading } from '../hooks/useFormWithLoading';
 
 
 
 export default function Purchases() {
+
     const [form, setForm] = useState({
         raw_material_id: '',
         quantity: '',
         total_amount: '',
         employee_id: '',
     });
-    const [rawMaterials, setRawMaterials] = useState([]);
-    const [employees, setEmployees] = useState([]);
-    const [purchases, setPurchases] = useState([]);
-    const [loading, setLoading] = useState(false);
+
     const [createOpen, setCreateOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [currentDeleteId, setCurrentDeleteId] = useState(null);
 
-    // Snackbar state
-    const [snackbarOpen, setSnackbarOpen] = useState(false);
-    const [snackbarMsg, setSnackbarMsg] = useState('');
-    const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+// хук для формы
+    const { loading, wrap } = useFormWithLoading();
 
-    const showSnackbar = (message, severity = 'success') => {
-        setSnackbarMsg(message);
-        setSnackbarSeverity(severity);
-        setSnackbarOpen(true);
+// Snackbar
+    const { snackbarProps, alertProps, show } = useNotifier();
+    const api = useApi();
+
+// загрузка данных
+    const [rawMaterials, setRawMaterials] = useState([]);
+    const [employees, setEmployees] = useState([]);
+    const [purchases, setPurchases] = useState([]);
+    const [dataLoading, setDataLoading] = useState(false);
+
+    const { load } = usePurchasesData();
+
+    const loadData = async () => {
+        setDataLoading(true);
+        try {
+            const result = await load();
+            setRawMaterials(result.rawMaterials);
+            setEmployees(result.employees);
+            setPurchases(result.purchases);
+        } finally {
+            setDataLoading(false);
+        }
     };
-
-    // 🔧 Утилита для парсинга ошибок (вставь выше useEffect или в начало компонента)
-    function parseError(error) {
-        if (typeof error === "string") return error;
-        if (typeof error === "object") return error.message || JSON.stringify(error);
-        return "Неизвестная ошибка";
-    }
 
     useEffect(() => {
         loadData();
     }, []);
 
-    const loadData = async () => {
-        try {
-            setLoading(true);
-            const [rmRes, empRes, pRes] = await Promise.all([
-                fetch('/api/raw-materials'),
-                fetch('/api/employees'),
-                fetch('/api/purchases'),
-            ]);
-            const [rmData, empData, pData] = await Promise.all([
-                rmRes.json(), empRes.json(), pRes.json(),
-            ]);
-
-            console.log('Сырьё:', rmData);
-            console.log('Сотрудники:', empData);
-            console.log('Закупки:', pData);
-
-            setRawMaterials(rmData);
-            setEmployees(empData);
-            setPurchases(pData);
-        } catch (err) {
-            const msg = parseError(err);
-            console.error('Ошибка при загрузке данных:', err);
-            showSnackbar('Ошибка загрузки данных: ' + msg, 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleFormSubmit = async e => {
+    const handleFormSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
 
-        const payload = {
-            raw_material_id: Number(form.raw_material_id),
-            quantity: parseFloat(form.quantity),
-            total_amount: parseFloat(form.total_amount),
-            employee_id: Number(form.employee_id),
-        };
+        const raw_material_id = Number(form.raw_material_id);
+        const quantity = parseFloat(form.quantity);
+        const total_amount = parseFloat(form.total_amount);
+        const employee_id = Number(form.employee_id);
 
-        try {
-            const res = await fetch('/api/purchases/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            const text = await res.text();
-            let result = {};
-            try { result = JSON.parse(text); } catch {}
+        const isValid =
+            raw_material_id &&
+            !isNaN(quantity) && quantity > 0 &&
+            !isNaN(total_amount) && total_amount > 0 &&
+            employee_id;
 
-            if (res.ok) {
-                showSnackbar('Сырье закуплено успешно', 'success');
+        if (!isValid) {
+            show("Пожалуйста, заполните все поля корректно", "error");
+            return;
+        }
+
+        await wrap(async () => {
+            try {
+                await api.post('/api/purchases/create', {
+                    raw_material_id,
+                    quantity,
+                    total_amount,
+                    employee_id,
+                });
+
+                // ✅ Только если запрос прошёл успешно:
                 setCreateOpen(false);
                 setForm({ raw_material_id: '', quantity: '', total_amount: '', employee_id: '' });
                 await loadData();
-            } else {
-                const errMsg = parseError(result?.error || text);
-                showSnackbar('Ошибка: ' + errMsg, 'error');
-            }
-        } catch (err) {
-            const msg = parseError(err);
-            showSnackbar('Ошибка: ' + msg, 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
+                show('Сырье закуплено успешно', 'success');
+            } catch (err) {
+                console.error('Ошибка при создании закупки:', err);
 
-    const openDeleteModal = id => {
+                // Расшифровка типа ошибки:
+                if (err?.response?.status === 409) {
+                    show(err.response.data.message || 'Недостаточно средств в бюджете', 'error');
+                } else if (err?.response?.status === 400) {
+                    show(err.response.data.message || 'Некорректные данные', 'error');
+                } else {
+                    show('Что-то пошло не так', 'error');
+                }
+            }
+        });
+    };
+    
+
+    const openDeleteModal = (id) => {
         setCurrentDeleteId(id);
         setDeleteOpen(true);
     };
 
     const handleDelete = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch(`/api/purchases/delete/${currentDeleteId}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (res.ok && data.message === 'Закупка удалена') {
-                showSnackbar('Закупка отменена', 'success');
-                setDeleteOpen(false);
-                await loadData();
-            } else {
-                const msg = parseError(data?.error || data?.message);
-                showSnackbar('Ошибка при отмене закупки: ' + msg, 'error');
-            }
-        } catch (err) {
-            const msg = parseError(err);
-            showSnackbar('Ошибка: ' + msg, 'error');
-        } finally {
-            setLoading(false);
-        }
+        await wrap(async () => {
+            await api.del(`/api/purchases/delete/${currentDeleteId}`);
+            show('Закупка отменена');
+            setDeleteOpen(false);
+            await loadData();
+        });
     };
+
+
 
 
     return (
@@ -322,19 +306,20 @@ export default function Purchases() {
 
                 {/* Snackbar */}
                 <Snackbar
-                    open={snackbarOpen}
-                    autoHideDuration={6000}
-                    onClose={() => setSnackbarOpen(false)}
-                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                    open={snackbarProps.open}
+                    onClose={snackbarProps.onClose}
+                    autoHideDuration={snackbarProps.autoHideDuration}
+                    anchorOrigin={snackbarProps.anchorOrigin}
                 >
                     <Alert
-                        onClose={() => setSnackbarOpen(false)}
-                        severity={snackbarSeverity}
-                        sx={{ width: '100%' }}
+                        severity={alertProps.severity}
+                        sx={alertProps.sx}
+                        onClose={snackbarProps.onClose}
                     >
-                        {snackbarMsg}
+                        {alertProps.children}
                     </Alert>
                 </Snackbar>
+
             </Box>
         </ThemeProvider>
     );

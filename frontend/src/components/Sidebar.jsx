@@ -6,15 +6,12 @@ import StraightenIcon from "@mui/icons-material/Straighten";
 import CategoryIcon from "@mui/icons-material/Category";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import LocalDiningIcon from "@mui/icons-material/LocalDining";
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import FactoryIcon from "@mui/icons-material/Factory";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import PaidIcon from "@mui/icons-material/Paid";
 import HomeIcon from "@mui/icons-material/Home";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import LogoutIcon from "@mui/icons-material/Logout"; // 👈 импорт иконки выхода
-import AccessibleLinkButton from "../components/AccessibleLinkButton"; // поправь путь если нужно
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance"; // Бюджет
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";       // Зарплаты
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";       // Продажи

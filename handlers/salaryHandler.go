@@ -47,13 +47,32 @@ func GenerateSalaries(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		var dummy int
+		result := db.
+			Model(&models.Salary{}).
+			Select("1").
+			Where("year = ? AND month = ?", req.Year, req.Month).
+			Limit(1).
+			Find(&dummy)
+
+		if result.Error != nil {
+			utils.InternalError(c, "Ошибка при проверке наличия зарплат")
+			return
+		}
+		exists := result.RowsAffected > 0
+
+		// Генерация
 		sql := `CALL generate_salaries_for_month(?, ?)`
 		if err := db.Exec(sql, req.Year, req.Month).Error; err != nil {
 			utils.InternalError(c, "Ошибка при генерации зарплат")
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Зарплаты рассчитаны"})
+		if exists {
+			c.JSON(http.StatusOK, gin.H{"message": "Зарплаты были пересчитаны"})
+		} else {
+			c.JSON(http.StatusOK, gin.H{"message": "Зарплаты рассчитаны впервые"})
+		}
 	}
 }
 

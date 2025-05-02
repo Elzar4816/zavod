@@ -1,10 +1,10 @@
 import React from 'react';
 import { Box, Typography, ThemeProvider } from '@mui/material';
 import { theme } from '../theme/theme.jsx';
-import SalesCard from '../components/SalesCard';
-import RawMaterialsCard from '../components/RawMaterialsCard';
-import BudgetCard from "../components/BudgetCard.jsx";
-import FinishedGoodsCard from "../components/FinishedGoodsCard.jsx";
+import SalesCard from '../components/cards/SalesCard.jsx';
+import RawMaterialsCard from '../components/cards/RawMaterialsCard.jsx';
+import BudgetCard from "../components/cards/BudgetCard.jsx";
+import FinishedGoodsCard from "../components/cards/FinishedGoodsCard.jsx";
 
 const Home = () => {
     return (

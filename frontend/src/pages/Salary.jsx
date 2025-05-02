@@ -1,5 +1,4 @@
 // src/pages/Salary.jsx
-import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 import {
     Box, Button, TextField, Select, MenuItem, InputLabel, FormControl,
@@ -18,70 +17,46 @@ import {
     glassTableStyle,
     selectWhiteStyleForDropper
 } from '../theme/uiStyles.js';
+import { useNotifier } from '../hooks/useNotifier';
+import { useApi } from '../hooks/useApi';
 
 export default function Salary() {
     const currentYear = new Date().getFullYear();
 
-    // form state
-    const [year, setYear]   = useState(currentYear);
+    const api = useApi(); // ✅ теперь используем универсальный API хук
+    const { snackbarProps, alertProps, show } = useNotifier();
+
+    const [year, setYear] = useState(currentYear);
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [salaries, setSalaries] = useState([]);
-    const [loading, setLoading]   = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    // snackbar
-    const [snackbarOpen, setSnackbarOpen]     = useState(false);
-    const [snackbarMsg, setSnackbarMsg]       = useState('');
-    const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-    const showSnackbar = (msg, sev='success') => {
-        setSnackbarMsg(msg); setSnackbarSeverity(sev); setSnackbarOpen(true);
-    };
-
-    // определяем, все ли уже выданы
     const allIssued = salaries.length > 0 && salaries.every(s => s.status === true);
-
-
-    function parseError(err) {
-        try {
-            const error = err?.response?.data?.error || err?.message || err;
-            if (typeof error === "string") return error;
-            if (typeof error === "object") return error.message || JSON.stringify(error);
-            return "Неизвестная ошибка";
-        } catch (e) {
-            return "Ошибка парсинга";
-        }
-    }
 
     const handleTotalChange = (idx, value) => {
         const updated = [...salaries];
-        updated[idx].total_salary = value; // сохраняем строку (или пустую)
+        updated[idx].total_salary = value;
         setSalaries(updated);
     };
 
-    // load/generate salaries whenever year/month change
+// 💡 загрузка и генерация зарплат
     useEffect(() => {
         async function load() {
             if (!year || !month) return;
             setLoading(true);
 
             try {
-                const genRes = await axios.post('/api/generate-salaries', { year, month });
-                const msg = genRes.data.message?.toLowerCase() || "";
+                const genRes = await api.post('/api/generate-salaries', { year, month });
+                const msg = genRes.message?.toLowerCase() || '';
 
                 if (msg.includes("рассчитаны впервые")) {
-                    showSnackbar("Зарплаты успешно сгенерированы", "success");
+                    show("Зарплаты успешно сгенерированы", "success");
                 } else if (msg.includes("пересчитаны")) {
-                    showSnackbar("Зарплаты были пересчитаны повторно", "info");
+                    show("Зарплаты были пересчитаны повторно", "info");
                 }
 
-            } catch (err) {
-                showSnackbar(parseError(err), "error");
-            }
-
-            try {
-                const res = await axios.get(`/api/salaries?year=${year}&month=${month}`);
-                setSalaries(res.data);
-            } catch (err) {
-                showSnackbar(parseError(err), "error");
+                const salaryData = await api.get(`/api/salaries?year=${year}&month=${month}`);
+                setSalaries(salaryData);
             } finally {
                 setLoading(false);
             }
@@ -89,57 +64,32 @@ export default function Salary() {
         load();
     }, [year, month]);
 
-
-// issue salaries
+// 💸 выдача зарплат
     const issueSalaries = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/salaries/issue', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ year, month })
-            });
-            const data = await res.json();
-
-            if (!res.ok) throw new Error(data?.error?.message || 'Ошибка при выдаче зарплат');
-
-            showSnackbar(data.message || 'Зарплата успешно выдана', 'success');
-
-            const fresh = await fetch(`/api/salaries?year=${year}&month=${month}`);
-            const arr = await fresh.json();
-            setSalaries(arr);
-        } catch (err) {
-            showSnackbar(parseError(err), 'error');
+            await api.post('/api/salaries/issue', { year, month });
+            const fresh = await api.get(`/api/salaries?year=${year}&month=${month}`);
+            setSalaries(fresh);
+            show('Зарплата успешно выдана', 'success');
         } finally {
             setLoading(false);
         }
     };
 
-
-    const totalToPay = salaries.reduce((sum, s) => sum + (parseFloat(s.total_salary)||0), 0);
-
-// сохраняет измененную зарплату по сотруднику
+// 💾 сохранение вручную изменённой суммы
     const handleSave = async (employeeId, totalSalary) => {
-        try {
-            const res = await fetch('/api/salaries/update', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    employee_id: employeeId,
-                    year,
-                    month,
-                    total_salary: parseFloat(totalSalary) || 0
-                })
-            });
-            const data = await res.json();
-
-            if (!res.ok) throw new Error(data?.error?.message || 'Ошибка при сохранении');
-
-            showSnackbar(data.message || 'Сумма сохранена', 'success');
-        } catch (err) {
-            showSnackbar(parseError(err), 'error');
-        }
+        await api.post('/api/salaries/update', {
+            employee_id: employeeId,
+            year,
+            month,
+            total_salary: parseFloat(totalSalary) || 0
+        });
+        show('Сумма сохранена', 'success');
     };
+
+    const totalToPay = salaries.reduce((sum, s) => sum + (parseFloat(s.total_salary) || 0), 0);
+
 
 
 
@@ -215,8 +165,14 @@ export default function Salary() {
                     <Table>
                         <TableHead>
                             <TableRow>
-                                {['ФИО','Оклад','Закупка','Произв.','Продажа','Участий','Бонус','К выдаче','Выдано']
-                                    .map(h=> <TableCell key={h} sx={tableHeadCellStyle}>{h}</TableCell>)}
+                                {[
+                                    'ФИО', 'Оклад', 'Закупка', 'Произв.', 'Продажа',
+                                    'Участий', 'Бонус', 'К выдаче', 'Выдано'
+                                ].map((h, idx) => (
+                                    <TableCell key={idx} sx={tableHeadCellStyle}>
+                                        {h}
+                                    </TableCell>
+                                ))}
                                 {!allIssued && (
                                     <TableCell sx={tableHeadCellStyle}>Действия</TableCell>
                                 )}
@@ -282,19 +238,21 @@ export default function Salary() {
                 </Box>
 
                 <Snackbar
-                    open={snackbarOpen}
-                    autoHideDuration={6000}
-                    onClose={()=>setSnackbarOpen(false)}
-                    anchorOrigin={{ vertical:'bottom', horizontal:'center' }}
+                    open={snackbarProps.open}
+                    onClose={snackbarProps.onClose}
+                    autoHideDuration={snackbarProps.autoHideDuration}
+                    anchorOrigin={snackbarProps.anchorOrigin}
                 >
                     <Alert
-                        onClose={()=>setSnackbarOpen(false)}
-                        severity={snackbarSeverity}
-                        sx={{ width:'100%' }}
+                        severity={alertProps.severity}
+                        sx={alertProps.sx}
+                        onClose={snackbarProps.onClose}
                     >
-                        {snackbarMsg}
+                        {alertProps.children}
                     </Alert>
                 </Snackbar>
+
+
             </Container>
         </ThemeProvider>
     );
