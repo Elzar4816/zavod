@@ -149,8 +149,9 @@ export default function RawMaterialsPage() {
                                 <TableRow key={rm.id}>
                                     <TableCell sx={tableBodyCellStyle}>{rm.name}</TableCell>
                                     <TableCell sx={tableBodyCellStyle}>{rm.quantity}</TableCell>
-                                    <TableCell sx={tableBodyCellStyle}>{rm.total_amount}</TableCell>
                                     <TableCell sx={tableBodyCellStyle}>
+                                        {rm.total_amount.toFixed(2)}
+                                    </TableCell>                                    <TableCell sx={tableBodyCellStyle}>
                                         {units.find(u => u.id === rm.unit_id)?.name}
                                     </TableCell>
                                     <TableCell sx={tableBodyCellStyle}>

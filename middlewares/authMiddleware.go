@@ -1,6 +1,6 @@
-// handlers/authHandler.go
+// middlewares/authMiddleware.go
 
-package handlers
+package middlewares
 
 import (
 	"github.com/gin-gonic/gin"
@@ -115,7 +115,7 @@ func AuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 
 		// При необходимости можно сразу подгрузить employee
 		var employee models.Employee
-		if err := db.First(&employee, session.EmployeeID).Error; err != nil {
+		if err := db.Preload("Position").Preload("Permissions").First(&employee, session.EmployeeID).Error; err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Сотрудник не найден"})
 			c.Abort()
 			return
@@ -125,7 +125,7 @@ func AuthMiddleware(db *gorm.DB) gin.HandlerFunc {
 		c.Set("employee_id", employee.ID)
 		c.Set("position", employee.PositionID) // Можно потом загрузить роль
 		c.Set("employee", employee)
-
+		c.Set("userRole", employee.Position.Name) // 👈 вот это — критично для Casbin
 		c.Next()
 	}
 }
@@ -148,5 +148,15 @@ func CheckSessionHandler(c *gin.Context, db *gorm.DB) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	var employee models.Employee
+	if err := db.Preload("Permissions").Preload("Position").First(&employee, session.EmployeeID).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Сотрудник не найден"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":       employee.ID,
+		"name":     employee.FullName,
+		"position": employee.Position.Name,
+	})
 }

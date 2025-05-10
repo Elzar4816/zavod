@@ -1,0 +1,25 @@
+p, admin, /api/*, *
+
+# Технолог
+p, technologist, /api/units*, *
+p, technologist, /api/units, GET
+p, technologist, /api/ingredients*, *
+p, technologist, /api/productions*, *
+p, technologist, /api/finished-good*, *
+p, technologist, /api/finished-goods, GET
+p, technologist, /api/raw-material*, *
+p, technologist, /api/raw-materials*, GET
+
+# Закупщик
+p, purchaser, /api/raw-materials, GET
+p, purchaser, /api/raw-material, GET
+p, purchaser, /api/purchases*, *
+p, purchaser, /api/units, GET
+p, purchaser, /api/employees, GET
+
+# Продавец
+p, seller, /api/sale_product, POST
+p, seller, /api/employees, GET
+p, seller, /api/finished-goods, GET
+p, seller, /api/sales, GET
+p, seller, /api/units, GET

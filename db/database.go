@@ -52,5 +52,64 @@ func ConnectDB() *gorm.DB {
 		&models.CreditPayment{},
 		&models.Session{},
 	)
+	initPositions(db) // ⬅️ Вставь сюда
+	seedInitialEmployees(db)
+	initUnits(db)
 	return db
+}
+func initPositions(db *gorm.DB) {
+	positions := []models.Position{
+		{Name: "admin"},
+		{Name: "technologist"},
+		{Name: "seller"},
+		{Name: "purchaser"},
+	}
+
+	for _, pos := range positions {
+		var existing models.Position
+		if err := db.Where("name = ?", pos.Name).First(&existing).Error; err != nil {
+			if err := db.Create(&pos).Error; err != nil {
+				log.Printf("Ошибка при создании позиции %s: %v\n", pos.Name, err)
+			} else {
+				log.Printf("Добавлена роль: %s\n", pos.Name)
+			}
+		}
+	}
+}
+func seedInitialEmployees(db *gorm.DB) {
+	employees := []models.Employee{
+		{FullName: "Админ Пользователь", PositionID: 1, Salary: 0, Address: "офис", Phone: "1111", Login: "admin", Email: "admin@zavod.com", Password: "admin"},
+		{FullName: "Технолог Иван", PositionID: 2, Salary: 0, Address: "цех", Phone: "2222", Login: "tech", Email: "tech@zavod.com", Password: "tech"},
+		{FullName: "Продавец Петр", PositionID: 3, Salary: 0, Address: "офис", Phone: "3333", Login: "sell", Email: "sell@zavod.com", Password: "sell"},
+		{FullName: "Закупщик Сергей", PositionID: 4, Salary: 0, Address: "офис", Phone: "4444", Login: "buy", Email: "buy@zavod.com", Password: "buy"},
+	}
+
+	for _, emp := range employees {
+		var exists models.Employee
+		if err := db.Where("login = ?", emp.Login).First(&exists).Error; err != nil {
+			if err := db.Create(&emp).Error; err != nil {
+				log.Printf("Ошибка при создании сотрудника %s: %v\n", emp.FullName, err)
+			} else {
+				log.Printf("Создан сотрудник: %s\n", emp.FullName)
+			}
+		}
+	}
+}
+func initUnits(db *gorm.DB) {
+	units := []models.Unit{
+		{Name: "Килограмм"},
+		{Name: "Литр"},
+		{Name: "Миллиграмм"},
+	}
+
+	for _, unit := range units {
+		var existing models.Unit
+		if err := db.Where("name = ?", unit.Name).First(&existing).Error; err != nil {
+			if err := db.Create(&unit).Error; err != nil {
+				log.Printf("Ошибка при создании единицы: %s: %v", unit.Name, err)
+			} else {
+				log.Printf("Добавлена единица измерения: %s", unit.Name)
+			}
+		}
+	}
 }

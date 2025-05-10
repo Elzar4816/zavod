@@ -1,216 +1,108 @@
-// src/pages/ProductionPage.jsx
 import React, { useState, useEffect } from 'react';
 import {
-    Box, Button, TextField, MenuItem, Typography, Table, TableHead, TableRow, TableCell,
-    TableBody, TableContainer, Paper, CircularProgress,
-    Tooltip, Snackbar, Alert, ThemeProvider, Dialog, DialogTitle, DialogContent, DialogActions
+    Box, Button, TextField, MenuItem, Typography, Table, TableHead,
+    TableRow, TableCell, TableBody, TableContainer, Paper, CircularProgress,
+    Tooltip, Snackbar, Alert, ThemeProvider, Dialog, DialogTitle,
+    DialogContent, DialogActions
 } from '@mui/material';
-import PlusIcon from '../assets/plus-svgrepo-com.svg';
-import { theme } from '../theme/theme.jsx';
+import PlusIcon from '@assets/plus-svgrepo-com.svg';
+import { theme } from '@theme/theme.jsx';
 import {
     inputStyle,
     selectWhiteStyle,
     tableHeadCellStyle,
     tableBodyCellStyle,
     glassTableStyle,
-} from '../theme/uiStyles.js';
+} from '@theme/uiStyles.js';
+import { useApi } from '@hooks/useApi';
+import { useNotifier } from '@hooks/useNotifier';
+import { useFormWithLoading } from '@hooks/useFormWithLoading';
 
 export default function ProductionPage() {
-    const [form, setForm] = useState({
-        product_id: '',
-        quantity: '',
-        employee_id: '',
-    });
+    const api = useApi();
+    const { show, snackbarProps, alertProps } = useNotifier();
+    const { loading, wrap } = useFormWithLoading();
+
+    const [form, setForm] = useState({ product_id: '', quantity: '', employee_id: '' });
     const [products, setProducts] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [productions, setProductions] = useState([]);
-    const [loading, setLoading] = useState(false);
     const [createOpen, setCreateOpen] = useState(false);
-
-    // -- NEW: состояния для Snackbar/Alert
-    const [snackbarOpen, setSnackbarOpen] = useState(false);
-    const [snackbarMsg, setSnackbarMsg] = useState('');
-    const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-
-    // -- NEW: утилита для вызова уведомлений
-    const showSnackbar = (message, severity = 'success') => {
-        setSnackbarMsg(message);
-        setSnackbarSeverity(severity);
-        setSnackbarOpen(true);
-    };
-
-    function parseError(err) {
-        const error = err?.response?.data?.error;
-        if (typeof error === "string") return error;
-        if (typeof error === "object") return error.message || JSON.stringify(error);
-        return err.message || "Неизвестная ошибка";
-    }
 
     useEffect(() => {
         loadData();
     }, []);
 
     const loadData = async () => {
-        try {
-            setLoading(true);
-            const [prodRes, empRes, pRes] = await Promise.all([
-                fetch('/api/finished-goods'),
-                fetch('/api/employees'),
-                fetch('/api/productions'),
+        await wrap(async () => {
+            const [prods, emps, hist] = await Promise.all([
+                api.get('/api/finished-goods'),
+                api.get('/api/employees'),
+                api.get('/api/productions')
             ]);
-            const [prodData, empData, pData] = await Promise.all([
-                prodRes.json(), empRes.json(), pRes.json(),
-            ]);
-            setProducts(prodData);
-            setEmployees(empData);
-            setProductions(pData);
-        } catch (err) {
-            console.error(err);
-            showSnackbar('Ошибка загрузки данных: ' + err.message, 'error');
-        } finally {
-            setLoading(false);
-        }
+            setProducts(prods);
+            setEmployees(emps);
+            setProductions(hist);
+        });
     };
 
-    const handleFormSubmit = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
 
-        const payload = {
-            product_id: Number(form.product_id),
-            quantity: parseFloat(form.quantity),
-            employee_id: Number(form.employee_id),
-        };
+        // 1. Клиентская валидация
+        const prodId = Number(form.product_id);
+        const qty    = parseFloat(form.quantity);
+        const empId  = Number(form.employee_id);
 
+        if (!prodId || isNaN(qty) || qty <= 0 || !empId) {
+            show("Пожалуйста, заполните все поля корректно", "error");
+            return;
+        }
+
+        // 2. Обёртка с загрузкой и перехватом ошибок
         try {
-            const res = await fetch('/api/productions/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-
-            const text = await res.text();
-            let result = {};
-            try { result = JSON.parse(text); } catch {}
-
-            if (res.ok) {
-                showSnackbar('Успешно произведено', 'success');
-                await loadData();
+            await wrap(async () => {
+                await api.post("/api/productions/create", {
+                    product_id: prodId,
+                    quantity: qty,
+                    employee_id: empId,
+                });
+                // Если запрос ОК – закрываем форму и обновляем
+                show("Производство успешно завершено", "success");
                 setCreateOpen(false);
-                setForm({ product_id: '', quantity: '', employee_id: '' });
-            } else {
-                const error = result?.error;
-                const msg = parseError({ response: { data: { error } } });
-                showSnackbar('Ошибка: ' + msg, 'error');
-            }
+                setForm({ product_id: "", quantity: "", employee_id: "" });
+                await loadData();
+            });
         } catch (err) {
-            const msg = parseError(err);
-            showSnackbar('Ошибка: ' + msg, 'error');
-        } finally {
-            setLoading(false);
+            // useApi уже вызвал show() с сообщением от сервера,
+            // но нам нужно подавить «незамеченную» ошибку,
+            // чтобы React точно сделал ререндер и Snackbar показался.
         }
     };
 
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setForm(f => ({ ...f, [name]: value }));
+    };
 
     return (
         <ThemeProvider theme={theme}>
+            <Box sx={{ color: '#fff', pt: 5, pl: 5 }}>
 
-            <Box  sx={{color: "#ffffff",pt:5,pl:5}}>
-
-                <Box sx={{ display: 'flex', justifyContent: 'space-between',alignItems:'center', mb: 2   }}>
-                    <Typography variant="h4" color={'#000'} >Производство</Typography>
-
-                </Box>
-
-                {/* Модалка с формой */}
-                <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth="sm">
-                    <DialogTitle sx={{ backgroundColor: '#1e1e1e', color: '#fff' }}>Произвести</DialogTitle>
-                    <DialogContent sx={{ backgroundColor: '#1e1e1e', color: '#fff' }}>
-                        <TextField
-                            select
-                            fullWidth
-                            margin="dense"
-                            label="Продукт"
-                            value={form.product_id}
-                            onChange={e => setForm(f => ({ ...f, product_id: e.target.value }))}
-                            required
-                            sx={selectWhiteStyle}
-                        >
-                            <MenuItem value="">-- Выберите продукт --</MenuItem>
-                            {products.map(p => (
-                                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-                            ))}
-                        </TextField>
-
-                        <TextField
-                            label="Количество"
-                            type="number"
-                            fullWidth
-                            margin="dense"
-                            value={form.quantity}
-                            onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
-                            required
-                            sx={inputStyle}
-                        />
-
-                        <TextField
-                            select
-                            fullWidth
-                            margin="dense"
-                            label="Сотрудник"
-                            value={form.employee_id}
-                            onChange={e => setForm(f => ({ ...f, employee_id: e.target.value }))}
-                            required
-                            sx={selectWhiteStyle}
-                        >
-                            <MenuItem value="">-- Выберите сотрудника --</MenuItem>
-                            {employees.map(emp => (
-                                <MenuItem key={emp.id} value={emp.id}>{emp.full_name}</MenuItem>
-                            ))}
-                        </TextField>
-                    </DialogContent>
-                    <DialogActions sx={{ backgroundColor: '#1e1e1e' }}>
-                        <Button onClick={() => setCreateOpen(false)}>Отмена</Button>
-                        <Button onClick={handleFormSubmit} variant="contained" disabled={loading}>
-                            {loading ? <CircularProgress size={24} /> : 'Произвести'}
-                        </Button>
-                    </DialogActions>
-                </Dialog>
-
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 5, mb: 2 }}>
-                    <Typography variant="h6" color={'#000'}>
-                        История производства
-                    </Typography>
-                    <Tooltip
-                        title="Произвести"
-                        placement="right"
-                        slotProps={{
-                            tooltip: {
-                                sx: {
-                                    fontSize: '14px',
-                                    padding: '10px 14px',
-                                    backgroundColor: '#2a2a2a',
-                                    color: '#fff',
-                                    border: '1px solid #646cff',
-                                    borderRadius: '8px',
-                                },
-                            },
-                        }}
-                    >
-        <span>
-            <Button
-                variant="contained"
-                onClick={() => setCreateOpen(true)}
-                sx={{ p: '6px', minWidth: '40px', borderRadius: '8px' }}
-            >
-                <img src={PlusIcon} alt="Добавить" width={24} height={24} />
-            </Button>
-        </span>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant='h4' color='#000'>Производство</Typography>
+                    <Tooltip title='Произвести' placement='right'>
+            <span>
+              <Button variant='contained' onClick={() => setCreateOpen(true)} disabled={loading} sx={{ p: 1, minWidth: 40, borderRadius: 1 }}>
+                <img src={PlusIcon} alt='Произвести' width={24} height={24} />
+              </Button>
+            </span>
                     </Tooltip>
                 </Box>
 
-
-                <TableContainer component={Paper}  elevation={10} sx={glassTableStyle}>
+                {/* Формирование истории */}
+                <TableContainer component={Paper} sx={glassTableStyle} elevation={10}>
                     <Table>
                         <TableHead>
                             <TableRow>
@@ -223,18 +115,14 @@ export default function ProductionPage() {
                         <TableBody>
                             {productions.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} align="center" sx={tableBodyCellStyle}>
-                                        Нет записей
-                                    </TableCell>
+                                    <TableCell colSpan={4} align='center' sx={tableBodyCellStyle}>Нет записей</TableCell>
                                 </TableRow>
                             ) : (
                                 productions.map(pr => (
                                     <TableRow key={pr.id}>
                                         <TableCell sx={tableBodyCellStyle}>{pr.product.name}</TableCell>
                                         <TableCell sx={tableBodyCellStyle}>{pr.quantity}</TableCell>
-                                        <TableCell sx={tableBodyCellStyle}>
-                                            {new Date(pr.production_date).toLocaleString()}
-                                        </TableCell>
+                                        <TableCell sx={tableBodyCellStyle}>{new Date(pr.production_date).toLocaleString()}</TableCell>
                                         <TableCell sx={tableBodyCellStyle}>{pr.employee.full_name}</TableCell>
                                     </TableRow>
                                 ))
@@ -243,20 +131,45 @@ export default function ProductionPage() {
                     </Table>
                 </TableContainer>
 
-                {/* Snackbar с Alert */}
-                <Snackbar
-                    open={snackbarOpen}
-                    autoHideDuration={6000}
-                    onClose={() => setSnackbarOpen(false)}
-                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-                >
-                    <Alert
-                        onClose={() => setSnackbarOpen(false)}
-                        severity={snackbarSeverity}
-                        sx={{ width: '100%' }}
-                    >
-                        {snackbarMsg}
-                    </Alert>
+                {/* Модалка создания */}
+                <Dialog open={createOpen} onClose={() => setCreateOpen(false)} fullWidth maxWidth='sm'>
+                    <DialogTitle sx={{ backgroundColor: '#1e1e1e', color: '#fff' }}>Произвести</DialogTitle>
+                    <DialogContent sx={{ backgroundColor: '#1e1e1e' }}>
+                        <TextField
+                            select fullWidth margin='dense' label='Продукт'
+                            name='product_id' value={form.product_id} onChange={handleChange}
+                            sx={selectWhiteStyle} required
+                        >
+                            <MenuItem value=''>-- Выберите продукт --</MenuItem>
+                            {products.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
+                        </TextField>
+
+                        <TextField
+                            label='Количество' type='number' fullWidth margin='dense'
+                            name='quantity' value={form.quantity} onChange={handleChange}
+                            sx={inputStyle} required
+                        />
+
+                        <TextField
+                            select fullWidth margin='dense' label='Сотрудник'
+                            name='employee_id' value={form.employee_id} onChange={handleChange}
+                            sx={selectWhiteStyle} required
+                        >
+                            <MenuItem value=''>-- Выберите сотрудника --</MenuItem>
+                            {employees.map(e => <MenuItem key={e.id} value={e.id}>{e.full_name}</MenuItem>)}
+                        </TextField>
+                    </DialogContent>
+                    <DialogActions sx={{ backgroundColor: '#1e1e1e' }}>
+                        <Button onClick={() => setCreateOpen(false)}>Отмена</Button>
+                        <Button onClick={handleSubmit} variant='contained' disabled={loading}>
+                            {loading ? <CircularProgress size={24} /> : 'Произвести'}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
+
+                {/* Snackbar уведомления */}
+                <Snackbar {...snackbarProps}>
+                    <Alert {...alertProps} onClose={snackbarProps.onClose}>{alertProps.children}</Alert>
                 </Snackbar>
             </Box>
         </ThemeProvider>

@@ -1,25 +1,32 @@
 package main
 
 import (
+	"github.com/casbin/casbin/v2"
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"log"
+	"zavod/authorizer"
 	"zavod/db"
 	"zavod/handlers"
-
-	"github.com/gin-gonic/gin"
+	"zavod/middlewares"
 )
 
 func main() {
 	// Инициализация базы данных
 	gormDB := db.ConnectDB()
 
+	// init Casbin
+	enforcer, err := authorizer.NewEnforcer()
+	if err != nil {
+		log.Fatalf("Casbin init error: %v", err)
+	}
 	// Инициализация Gin
 	r := gin.Default()
 	r.Use(gin.Recovery())
 	setupRoutesStaticAndTemplates(r)
 
 	// Регистрация маршрутов
-	setupRoutes(r, gormDB)
+	setupRoutes(r, gormDB, enforcer)
 
 	// Запускаем сервер
 	log.Println("Server started on http://localhost:8080")
@@ -38,19 +45,20 @@ func setupRoutesStaticAndTemplates(r *gin.Engine) {
 }
 
 // setupRoutes - функция для регистрации всех маршрутов и хендлеров
-func setupRoutes(r *gin.Engine, gormDB *gorm.DB) {
+func setupRoutes(r *gin.Engine, gormDB *gorm.DB, enforcer *casbin.Enforcer) {
 
 	// --- JSON API — всё под /api ---
 	api := r.Group("/api")
 	{
 		// 👇 Публичные маршруты (без авторизации)
-		api.POST("/login", func(c *gin.Context) { handlers.LoginHandler(c, gormDB) })
-		api.POST("/logout", func(c *gin.Context) { handlers.LogoutHandler(c, gormDB) })
-		api.GET("/session", func(c *gin.Context) { handlers.CheckSessionHandler(c, gormDB) })
+		api.POST("/login", func(c *gin.Context) { middlewares.LoginHandler(c, gormDB) })
+		api.POST("/logout", func(c *gin.Context) { middlewares.LogoutHandler(c, gormDB) })
+		api.GET("/session", func(c *gin.Context) { middlewares.CheckSessionHandler(c, gormDB) })
 
 		// 👇 Защищённые маршруты
 		protected := api.Group("/")
-		protected.Use(handlers.AuthMiddleware(gormDB))
+		protected.Use(middlewares.AuthMiddleware(gormDB))
+		protected.Use(middlewares.CasbinMiddleware(enforcer))
 		{
 			protected.GET("/units", func(c *gin.Context) { handlers.ListUnits(c, gormDB) })
 			protected.POST("/units/create", func(c *gin.Context) { handlers.CreateUnit(c, gormDB) })

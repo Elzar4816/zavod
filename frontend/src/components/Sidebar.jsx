@@ -1,12 +1,14 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Tooltip, Collapse } from "@mui/material";
+import { useAuth } from "../context/AuthContext"; // 👈 обязательно
+
 
 import StraightenIcon from "@mui/icons-material/Straighten";
 import CategoryIcon from "@mui/icons-material/Category";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import LocalDiningIcon from "@mui/icons-material/LocalDining";
-import FactoryIcon from "@mui/icons-material/Factory";
+    import FactoryIcon from "@mui/icons-material/Factory";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import HomeIcon from "@mui/icons-material/Home";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -150,39 +152,11 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     let logoutTransform = "";
     if (logoutPressed) logoutTransform = "scale(0.95)";
     else if (logoutHover) logoutTransform = "translateY(-2px)";
-
-    const logoutStyle = {
-        ...menuItemBase,
-        marginTop: 30,
-        cursor: "pointer",
-        justifyContent: isOpen ? "flex-start" : "center",
-        transform: logoutTransform,
-        transition: "transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out",
-        ...(logoutHover ? hoverStyle : {}),
-    };
-
     const navigate = useNavigate();
 
-    const handleLogout = async () => {
-        try {
-            await fetch("/api/logout", { method: "POST", credentials: "include" });
-            navigate("/login", { replace: true });
-            window.location.reload();
-        } catch (error) {
-            console.error("Ошибка при выходе:", error);
-        }
-    };
 
 
-    const items = [
-        { to: "/", icon: HomeIcon, label: "Главная" },
-        { to: "/units", icon: StraightenIcon, label: "Единицы измерения" },
-        { to: "/raw-materials", icon: CategoryIcon, label: "Сырьё" },
-        { to: "/finished-goods", icon: Inventory2Icon, label: "Готовая продукция" },
-        { to: "/ingredients", icon: LocalDiningIcon, label: "Ингредиенты" },
-        { to: "/productions", icon: FactoryIcon, label: "Производство" },
-        { to: "/purchases", icon: ShoppingCartIcon, label: "Закупка" },
-    ];
+
 
     // рассчитываем анимацию для «Бюджет»
     let budgetTransform = "";
@@ -197,6 +171,34 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         transform: budgetTransform,
         transition: "transform 0.1s ease-in-out, box-shadow 0.2s ease-in-out",
     };
+
+    const { user } = useAuth();
+    const role = user?.position;
+
+    const roleAccess = {
+        admin: "*",
+        technologist: ["/", "/units", "/ingredients", "/productions", "/finished-goods","/raw-materials"],
+        purchaser: ["/", "/raw-materials", "/purchases"],
+        seller: ["/", "/sales", "/sale_product"],
+    };
+
+    const items = [
+        { to: "/", icon: HomeIcon, label: "Главная" },
+        { to: "/units", icon: StraightenIcon, label: "Единицы измерения" },
+        { to: "/raw-materials", icon: CategoryIcon, label: "Сырьё" },
+        { to: "/finished-goods", icon: Inventory2Icon, label: "Готовая продукция" },
+        { to: "/ingredients", icon: LocalDiningIcon, label: "Ингредиенты" },
+        { to: "/productions", icon: FactoryIcon, label: "Производство" },
+        { to: "/purchases", icon: ShoppingCartIcon, label: "Закупка" },
+        { to: "/sales", icon: PointOfSaleIcon, label: "Продажи" }, // 👈 добавлено
+    ];
+
+
+    const accessibleItems = items.filter(({ to }) => {
+        if (!role) return false;
+        const access = roleAccess[role];
+        return access === "*" || access.includes(to);
+    });
 
     return (
         <>
@@ -239,7 +241,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
                 {/* Ссылки */}
                 <nav style={{paddingTop: 5}}>
-                    {items.map(({to, icon, label}) => (
+                    {accessibleItems.map(({to, icon, label}) => (
                         <SidebarLink
                             key={to}
                             to={to}
@@ -248,142 +250,103 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                             isOpen={isOpen}
                         />
                     ))}
-
-                    {/* Пункт «Бюджет» с тултипом, анимацией и дропдаун-стрелкой */}
-                    <Tooltip
-                        title="Бюджет"
-                        placement="right"
-                        disableHoverListener={isOpen}
-                        disableFocusListener={isOpen}
-                        enterDelay={1000}
-                        slotProps={{
-                            tooltip: {
-                                sx: {
-                                    fontSize: "14px",
-                                    padding: "10px 14px",
-                                    backgroundColor: "#DCCFB4",
-                                    color: "#323030",
-                                    borderRadius: "8px",
-                                },
-                            },
-                        }}
-                    >
-                        <button
-                            type="button"
-                            style={{
-                                ...budgetStyle,
-                                background: "none",
-                                border: "none",
-                                textAlign: "left",
-                                width: "100%",
-                            }}
-                            onClick={() => navigate("/budgets")}
-                            onMouseEnter={() => setBudgetHover(true)}
-                            onMouseLeave={() => {
-                                setBudgetHover(false);
-                                setBudgetPressed(false);
-                            }}
-                            onMouseDown={() => setBudgetPressed(true)}
-                            onMouseUp={() => setBudgetPressed(false)}
-                            onTouchStart={() => setBudgetPressed(true)}
-                            onTouchEnd={() => setBudgetPressed(false)}
-                        >
-                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                <AccountBalanceIcon style={{ fontSize: 24, minWidth: 24 }} />
-                                <span
+                    {(roleAccess[role] === "*" || roleAccess[role]?.includes("/budgets")) && (
+                        <>
+                            {/* Пункт «Бюджет» с тултипом, анимацией и дропдаун-стрелкой */}
+                            <Tooltip
+                                title="Бюджет"
+                                placement="right"
+                                disableHoverListener={isOpen}
+                                disableFocusListener={isOpen}
+                                enterDelay={1000}
+                                slotProps={{
+                                    tooltip: {
+                                        sx: {
+                                            fontSize: "14px",
+                                            padding: "10px 14px",
+                                            backgroundColor: "#DCCFB4",
+                                            color: "#323030",
+                                            borderRadius: "8px",
+                                        },
+                                    },
+                                }}
+                            >
+                                <button
+                                    type="button"
                                     style={{
-                                        opacity: isOpen ? 1 : 0,
-                                        maxWidth: isOpen ? 200 : 0,
-                                        overflow: "hidden",
-                                        transition: "opacity 0.3s, max-width 0.3s",
+                                        ...budgetStyle,
+                                        background: "none",
+                                        border: "none",
+                                        textAlign: "left",
+                                        width: "100%",
                                     }}
+                                    onClick={() => navigate("/budgets")}
+                                    onMouseEnter={() => setBudgetHover(true)}
+                                    onMouseLeave={() => {
+                                        setBudgetHover(false);
+                                        setBudgetPressed(false);
+                                    }}
+                                    onMouseDown={() => setBudgetPressed(true)}
+                                    onMouseUp={() => setBudgetPressed(false)}
+                                    onTouchStart={() => setBudgetPressed(true)}
+                                    onTouchEnd={() => setBudgetPressed(false)}
                                 >
-                Бюджет
-            </span>
-                            </div>
-                            {isOpen &&
-                                (budgetOpen ? (
-                                    <ExpandLessIcon
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setBudgetOpen(false);
-                                        }}
+                                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                        <AccountBalanceIcon style={{ fontSize: 24, minWidth: 24 }} />
+                                        <span
+                                            style={{
+                                                opacity: isOpen ? 1 : 0,
+                                                maxWidth: isOpen ? 200 : 0,
+                                                overflow: "hidden",
+                                                transition: "opacity 0.3s, max-width 0.3s",
+                                            }}
+                                        >Бюджет</span>
+                                    </div>
+                                    {isOpen &&
+                                        (budgetOpen ? (
+                                            <ExpandLessIcon
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setBudgetOpen(false);
+                                                }}
+                                            />
+                                        ) : (
+                                            <ExpandMoreIcon
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setBudgetOpen(true);
+                                                }}
+                                            />
+                                        ))}
+                                </button>
+                            </Tooltip>
+
+
+                            {/* Подпункты «Зарплаты» и «Продажи» */}
+                            <Collapse in={budgetOpen && isOpen} timeout="auto" unmountOnExit>
+                                <div style={{marginLeft: 32}}>
+                                    <SidebarLink
+                                        to="/salaries"
+                                        icon={AttachMoneyIcon}
+                                        label="Зарплаты"
+                                        isOpen={isOpen}
                                     />
-                                ) : (
-                                    <ExpandMoreIcon
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setBudgetOpen(true);
-                                        }}
+                                    <SidebarLink
+                                        to="/sales"
+                                        icon={PointOfSaleIcon}
+                                        label="Продажи"
+                                        isOpen={isOpen}
                                     />
-                                ))}
-                        </button>
-                    </Tooltip>
-
-
-                    {/* Подпункты «Зарплаты» и «Продажи» */}
-                    <Collapse in={budgetOpen && isOpen} timeout="auto" unmountOnExit>
-                        <div style={{marginLeft: 32}}>
-                            <SidebarLink
-                                to="/salaries"
-                                icon={AttachMoneyIcon}
-                                label="Зарплаты"
-                                isOpen={isOpen}
-                            />
-                            <SidebarLink
-                                to="/sales"
-                                icon={PointOfSaleIcon}
-                                label="Продажи"
-                                isOpen={isOpen}
-                            />
-                            <SidebarLink
-                                to="/credits"
-                                icon={CreditScoreIcon}
-                                label="Кредиты"
-                                isOpen={isOpen}
-                            />
-                        </div>
-                    </Collapse>
-                    {/* Кнопка "Выйти" */}
-                    <button
-                        type="button"
-                        style={{
-                            ...logoutStyle,
-                            background: "none",
-                            border: "none",
-                            textAlign: "left",
-                            width: "100%",
-                        }}
-                        onClick={handleLogout}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                                handleLogout();
-                            }
-                        }}
-                        onMouseEnter={() => setLogoutHover(true)}
-                        onMouseLeave={() => {
-                            setLogoutHover(false);
-                            setLogoutPressed(false);
-                        }}
-                        onMouseDown={() => setLogoutPressed(true)}
-                        onMouseUp={() => setLogoutPressed(false)}
-                        onTouchStart={() => setLogoutPressed(true)}
-                        onTouchEnd={() => setLogoutPressed(false)}
-                    >
-                        <LogoutIcon style={{fontSize: 24, minWidth: 24}}/>
-                        <span
-                            style={{
-                                opacity: isOpen ? 1 : 0,
-                                maxWidth: isOpen ? 200 : 0,
-                                overflow: "hidden",
-                                transition: "opacity 0.3s ease, max-width 0.3s ease",
-                            }}
-                        >
-                        Выйти
-                        </span>
-                    </button>
-
-
+                                    <SidebarLink
+                                        to="/credits"
+                                        icon={CreditScoreIcon}
+                                        label="Кредиты"
+                                        isOpen={isOpen}
+                                    />
+                                </div>
+                            </Collapse>
+                        </>
+                    )}
                 </nav>
             </div>
         </>

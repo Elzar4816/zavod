@@ -17,12 +17,7 @@ import {
     glassTableStyle
 } from '../theme/uiStyles.js';
 
-function parseError(err) {
-    const error = err?.response?.data?.error;
-    if (typeof error === "string") return error;
-    if (typeof error === "object") return error.message || JSON.stringify(error);
-    return err.message || "Неизвестная ошибка";
-}
+
 export default function SalesPage() {
     const [form, setForm] = useState({
         product_id: '',
@@ -46,6 +41,12 @@ export default function SalesPage() {
         setSnackbarOpen(true);
     };
 
+    function parseError(err) {
+        const error = err?.response?.data?.error;
+        if (typeof error === "string") return error;
+        if (typeof error === "object") return error.message || JSON.stringify(error);
+        return err.message || "Неизвестная ошибка";
+    }
     useEffect(() => {
         loadData();
     }, []);

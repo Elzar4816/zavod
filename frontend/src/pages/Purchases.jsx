@@ -60,10 +60,18 @@ export default function Purchases() {
             setRawMaterials(result.rawMaterials);
             setEmployees(result.employees);
             setPurchases(result.purchases);
+
+            // автоматически выбираем первое значение, если ещё не выбрано
+            setForm(f => ({
+                ...f,
+                raw_material_id: f.raw_material_id || result.rawMaterials[0]?.id || '',
+                employee_id: f.employee_id || result.employees[0]?.id || ''
+            }));
         } finally {
             setDataLoading(false);
         }
     };
+
 
     useEffect(() => {
         loadData();
@@ -149,19 +157,20 @@ export default function Purchases() {
                             Создать закупку
                         </Typography>
 
-                        <FormControl fullWidth margin="normal" sx={selectWhiteStyle}>
-                            <InputLabel>Сырье</InputLabel>
-                            <Select
-                                value={form.raw_material_id}
-                                onChange={e => setForm(f => ({ ...f, raw_material_id: e.target.value }))}
-                                required
-                            >
-                                <MenuItem value="">-- Выберите сырье --</MenuItem>
-                                {rawMaterials.map(rm => (
-                                    <MenuItem key={rm.id} value={rm.id}>{rm.name}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+                        <TextField
+                            select
+                            fullWidth
+                            margin="normal"
+                            label="Сырье"
+                            name="raw_material_id"
+                            value={form.raw_material_id}
+                            onChange={(e) => setForm(f => ({ ...f, raw_material_id: e.target.value }))}
+                            sx={selectWhiteStyle}
+                        >
+                            {rawMaterials.map(rm => (
+                                <MenuItem key={rm.id} value={rm.id}>{rm.name}</MenuItem>
+                            ))}
+                        </TextField>
 
                         <TextField
                             label="Количество"
@@ -185,19 +194,21 @@ export default function Purchases() {
                             sx={inputStyle}
                         />
 
-                        <FormControl fullWidth margin="normal" sx={selectWhiteStyle}>
-                            <InputLabel>Сотрудник</InputLabel>
-                            <Select
-                                value={form.employee_id}
-                                onChange={e => setForm(f => ({ ...f, employee_id: e.target.value }))}
-                                required
-                            >
-                                <MenuItem value="">-- Выберите сотрудника --</MenuItem>
-                                {employees.map(emp => (
-                                    <MenuItem key={emp.id} value={emp.id}>{emp.full_name}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
+                        <TextField
+                            select
+                            fullWidth
+                            margin="normal"
+                            label="Сотрудник"
+                            name="employee_id"
+                            value={form.employee_id}
+                            onChange={(e) => setForm(f => ({ ...f, employee_id: e.target.value }))}
+                            required
+                            sx={selectWhiteStyle}
+                        >
+                            {employees.map(emp => (
+                                <MenuItem key={emp.id} value={emp.id}>{emp.full_name}</MenuItem>
+                            ))}
+                        </TextField>
 
                         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                             <Button onClick={() => setCreateOpen(false)} sx={{ mr: 2 }}>
@@ -209,6 +220,7 @@ export default function Purchases() {
                         </Box>
                     </Box>
                 </Modal>
+
 
                 {/* Модалка удаления */}
                 <Modal open={deleteOpen} onClose={() => setDeleteOpen(false)}>
