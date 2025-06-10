@@ -127,6 +127,20 @@ func setupRoutes(r *gin.Engine, gormDB *gorm.DB, enforcer *casbin.Enforcer) {
 			protected.GET("/credits/:id/payments", func(c *gin.Context) { handlers.GetCreditPaymentsHandler(c, gormDB) })
 			protected.GET("/credits/:id", func(c *gin.Context) { handlers.GetCreditByID(c, gormDB) })
 
+			//reports
+			protected.GET("/report/sales", func(c *gin.Context) {
+				handlers.SalesReportHandler(c, gormDB)
+			})
+			protected.GET("/report/salaries", func(c *gin.Context) { handlers.SalaryReportHandler(c, gormDB) })
+			protected.GET("/report/credit-payments", func(c *gin.Context) { handlers.CreditPaymentsReportHandler(c, gormDB) })
+
+			protected.GET("/report/productions", func(c *gin.Context) {
+				handlers.GenerateProductionReportHandler(c, gormDB)
+			})
+			protected.GET("/report/purchases", func(c *gin.Context) {
+				handlers.PurchaseReportHandler(c, gormDB)
+			})
+
 		}
 
 	}

@@ -18,6 +18,7 @@ import AccountBalanceIcon from "@mui/icons-material/AccountBalance"; // Бюдж
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";       // Зарплаты
 import PointOfSaleIcon from "@mui/icons-material/PointOfSale";       // Продажи
 import CreditScoreIcon from "@mui/icons-material/CreditScore";       // Кредиты
+import BarChartIcon from "@mui/icons-material/CreditScore";       // Кредиты
 
 // стили самого сайдбара
 const sidebarStyle = (isOpen) => ({
@@ -177,9 +178,9 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
     const roleAccess = {
         admin: "*",
-        technologist: ["/", "/units", "/ingredients", "/productions", "/finished-goods","/raw-materials"],
-        purchaser: ["/", "/raw-materials", "/purchases"],
-        seller: ["/", "/sales", "/sale_product"],
+        technologist: ["/", "/units", "/ingredients", "/productions", "/finished-goods","/raw-materials","/reports"],
+        manager: ["/", "/raw-materials", "/purchases", "/sales", "/sale_product","/reports"],
+        accountant: ["/budgets", "/salaries", "/credits","/reports"],
     };
 
     const items = [
@@ -191,6 +192,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         { to: "/productions", icon: FactoryIcon, label: "Производство" },
         { to: "/purchases", icon: ShoppingCartIcon, label: "Закупка" },
         { to: "/sales", icon: PointOfSaleIcon, label: "Продажи" }, // 👈 добавлено
+
     ];
 
 
@@ -347,6 +349,17 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                             </Collapse>
                         </>
                     )}
+                    {(roleAccess[role] === "*" || roleAccess[role]?.includes("/reports")) && (
+                        <SidebarLink
+                            to="/report"
+                            icon={BarChartIcon}
+                            label="Отчёты"
+                            isOpen={isOpen}
+                        />
+                    )}
+
+
+
                 </nav>
             </div>
         </>

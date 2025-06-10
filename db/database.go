@@ -61,8 +61,8 @@ func initPositions(db *gorm.DB) {
 	positions := []models.Position{
 		{Name: "admin"},
 		{Name: "technologist"},
-		{Name: "seller"},
-		{Name: "purchaser"},
+		{Name: "manager"},
+		{Name: "accountant"},
 	}
 
 	for _, pos := range positions {
@@ -80,8 +80,8 @@ func seedInitialEmployees(db *gorm.DB) {
 	employees := []models.Employee{
 		{FullName: "Админ Пользователь", PositionID: 1, Salary: 0, Address: "офис", Phone: "1111", Login: "admin", Email: "admin@zavod.com", Password: "admin"},
 		{FullName: "Технолог Иван", PositionID: 2, Salary: 0, Address: "цех", Phone: "2222", Login: "tech", Email: "tech@zavod.com", Password: "tech"},
-		{FullName: "Продавец Петр", PositionID: 3, Salary: 0, Address: "офис", Phone: "3333", Login: "sell", Email: "sell@zavod.com", Password: "sell"},
-		{FullName: "Закупщик Сергей", PositionID: 4, Salary: 0, Address: "офис", Phone: "4444", Login: "buy", Email: "buy@zavod.com", Password: "buy"},
+		{FullName: "Менеджер Петр", PositionID: 3, Salary: 0, Address: "офис", Phone: "3333", Login: "manage", Email: "manage@zavod.com", Password: "manage"},
+		{FullName: "Бухгалтер Сергей", PositionID: 4, Salary: 0, Address: "офис", Phone: "4444", Login: "buch", Email: "buch@zavod.com", Password: "buch"},
 	}
 
 	for _, emp := range employees {

@@ -14,10 +14,25 @@ const saleCode = "ERR_SALE"
 
 func SalesHistoryHandler(c *gin.Context, db *gorm.DB) {
 	var sales []models.ProductSale
-	if err := db.Preload("Product").Preload("Employee").Order("sale_date DESC").Find(&sales).Error; err != nil {
+
+	fromStr := c.Query("from")
+	toStr := c.Query("to")
+
+	query := db.Preload("Product").Preload("Employee").Order("sale_date DESC")
+
+	if fromStr != "" && toStr != "" {
+		from, err1 := time.Parse("2006-01-02", fromStr)
+		to, err2 := time.Parse("2006-01-02", toStr)
+		if err1 == nil && err2 == nil {
+			query = query.Where("sale_date BETWEEN ? AND ?", from, to)
+		}
+	}
+
+	if err := query.Find(&sales).Error; err != nil {
 		utils.InternalError(c, "Не удалось загрузить историю продаж")
 		return
 	}
+
 	c.JSON(http.StatusOK, sales)
 }
 

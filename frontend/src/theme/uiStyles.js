@@ -1,5 +1,4 @@
 // src/theme/uiStyles.js
-
 export const inputStyle = {
     input: { color: '#fff' },
     label: { color: '#fff' },

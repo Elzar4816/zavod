@@ -91,7 +91,7 @@ export default function ProductionPage() {
             <Box sx={{ color: '#fff', pt: 5, pl: 5 }}>
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant='h4' color='#000'>Производство</Typography>
+                    <Typography variant='h4' color='#000'>Производство продукции</Typography>
                     <Tooltip title='Произвести' placement='right'>
             <span>
               <Button variant='contained' onClick={() => setCreateOpen(true)} disabled={loading} sx={{ p: 1, minWidth: 40, borderRadius: 1 }}>

@@ -4,9 +4,9 @@ import ForbiddenPage from "./ForbiddenPage";
 
 const roleAccess = {
     admin: "*",
-    technologist: ["/units", "/ingredients", "/productions", "/finished-goods","/raw-materials"],
-    purchaser: ["/raw-materials", "/purchases"],
-    seller: ["/sales"],
+    technologist: ["/units", "/ingredients", "/productions", "/finished-goods", "/raw-materials", "/report"],
+    manager: ["/raw-materials", "/purchases", "/sales", "/report"],
+    accountant: ["/budgets", "/salaries", "/credits", "/report"],
 };
 
 export default function RequireAccess({ path, children }) {

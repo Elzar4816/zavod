@@ -20,3 +20,12 @@ type EmployeePermission struct {
 func (EmployeePermission) TableName() string {
 	return "employee_permissions"
 }
+
+type PositionPermission struct {
+	PositionID   uint `gorm:"primaryKey"`
+	PermissionID uint `gorm:"primaryKey"`
+}
+
+func (PositionPermission) TableName() string {
+	return "position_permissions"
+}

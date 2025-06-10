@@ -19,6 +19,7 @@ import UserToolbar from "@components/UserToolbar.jsx";
 import ProfilePage from "@pages/Profile.jsx";
 import RequireAccess from "./context/RequireAccess.jsx";
 import { useAuth } from "./context/AuthContext";
+import ReportPage from "@pages/Reports.jsx";
 
 
 // 🔒 Защита маршрутов — используем state из App
@@ -190,6 +191,12 @@ function App() {
                                 <ProfilePage />
                             </ProtectedRoute>
                         } />
+                        <Route path="/report" element={
+                            <RequireAccess path="/report">
+                                <ReportPage />
+                            </RequireAccess>
+                        } />
+
 
                     </Routes>
                 </div>
@@ -204,8 +211,10 @@ function App() {
                         }).finally(() => {
                             setAuthenticated(false);
                             setUser(null);
+                            window.location.href = "/login"; // 👈 добавляем редирект
                         });
                     }}
+
                 />
             )}
         </Router>
